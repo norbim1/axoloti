@@ -15,7 +15,7 @@ esac
 
 case "$platform" in
 	mac)
-		java -Xdock:name=AxoStudio -Djava.library.path=$rootdir/dist/lib -jar $rootdir/dist/Axoloti.jar
+		java -Xdock:name=Axoloti -Djava.library.path=$rootdir/dist/lib -jar $rootdir/dist/Axoloti.jar
 	;;
 	linux)
 #		java -Djava.library.path=$rootdir/dist/lib -jar $rootdir/dist/Axoloti.jar
