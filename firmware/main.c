@@ -57,7 +57,7 @@
 extern void MY_USBH_Init(void);
 #endif
 
-#if (BOARD_STM32F4DISCOVERY)
+#if (BOARD_STM32F4DISCOVERY)||(BOARD_STM32F4DISCOVERY_1)
 void ToggleGreen(void) {
   palSetPadMode(GPIOD, 12, PAL_MODE_OUTPUT_PUSHPULL); palTogglePad(GPIOD, 12);
 }
@@ -69,6 +69,38 @@ void ToggleRed(void) {
 }
 void ToggleBlue(void) {
   palSetPadMode(GPIOD, 15, PAL_MODE_OUTPUT_PUSHPULL); palTogglePad(GPIOD, 15);
+}
+void SetGreen(void) {
+  palSetPadMode(GPIOD, 12, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetPad(GPIOD, 12);
+}
+void SetOrange(void) {
+  palSetPadMode(GPIOD, 13, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetPad(GPIOD, 13);
+}
+void SetRed(void) {
+  palSetPadMode(GPIOD, 14, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetPad(GPIOD, 14);
+}
+void SetBlue(void) {
+  palSetPadMode(GPIOD, 15, PAL_MODE_OUTPUT_PUSHPULL);
+  palSetPad(GPIOD, 15);
+}
+void ClearGreen(void) {
+  palSetPadMode(GPIOD, 12, PAL_MODE_OUTPUT_PUSHPULL);
+  palClearPad(GPIOD, 12);
+}
+void ClearOrange(void) {
+  palSetPadMode(GPIOD, 13, PAL_MODE_OUTPUT_PUSHPULL);
+  palClearPad(GPIOD, 13);
+}
+void ClearRed(void) {
+  palSetPadMode(GPIOD, 14, PAL_MODE_OUTPUT_PUSHPULL);
+  palClearPad(GPIOD, 14);
+}
+void ClearBlue(void) {
+  palSetPadMode(GPIOD, 15, PAL_MODE_OUTPUT_PUSHPULL);
+  palClearPad(GPIOD, 15);
 }
 #endif
 
@@ -108,9 +140,9 @@ int main(void) {
   axoloti_math_init();
   midi_init();
 
-#if ((BOARD_AXOLOTI_V03)||(BOARD_AXOLOTI_V05))
+//#if ((BOARD_AXOLOTI_V03)||(BOARD_AXOLOTI_V05))
   axoloti_control_init();
-#endif
+//#endif
   ui_init();
   StartLoadPatchTread();
 
@@ -118,6 +150,11 @@ int main(void) {
   configSDRAM();
   //memTest();
 #endif
+#if (BOARD_STM32F4DISCOVERY_1)
+  if (!palReadPad(GPIOA, 0)) // User button not pressed
+    SDLoadPatch("0:start.bin");
+#endif
+
 
 #ifdef ENABLE_USB_HOST
 // SD2 for serial debug output
@@ -156,6 +193,11 @@ int main(void) {
 
   while (1) {
     chThdSleepMilliseconds(1000);
+#if (BOARD_STM32F4DISCOVERY)||(BOARD_STM32F4DISCOVERY_1)
+	ToggleGreen();
+	if (!patchStatus) SetOrange();
+	else ClearOrange();
+#endif
   }
 }
 

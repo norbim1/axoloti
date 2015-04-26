@@ -44,7 +44,7 @@ void adc_convert(void);
 #define LED1_PIN 8
 #define SW2_PORT GPIOB
 #define SW2_PIN 2
-#elif (BOARD_STM32F4DISCOVERY)
+#elif (BOARD_STM32F4DISCOVERY)||(BOARD_STM32F4DISCOVERY_1)
 // led 1 = green
 #define LED1_PORT GPIOD
 #define LED1_PIN 12

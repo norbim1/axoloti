@@ -22,6 +22,32 @@
 
 void BlinkenLights(void) {
   // LEDS
+#if (BOARD_STM32F4DISCOVERY)||(BOARD_STM32F4DISCOVERY_1)
+	  palSetPadMode(GPIOD, 12, PAL_MODE_OUTPUT_PUSHPULL);
+	  palSetPadMode(GPIOD, 13, PAL_MODE_OUTPUT_PUSHPULL);
+	  palSetPadMode(GPIOD, 14, PAL_MODE_OUTPUT_PUSHPULL);
+	  palSetPadMode(GPIOD, 15, PAL_MODE_OUTPUT_PUSHPULL);
+	  int k;
+	  for (k = 0; k < 1; k++) {
+	    palSetPad(GPIOD, 12);
+	    chThdSleepMilliseconds(50);
+	    palClearPad(GPIOD, 12);
+	    palSetPad(GPIOD, 13);
+	    chThdSleepMilliseconds(50);
+	    palClearPad(GPIOD, 13);
+	    palSetPad(GPIOD, 14);
+	    chThdSleepMilliseconds(50);
+	    palClearPad(GPIOD, 14);
+	    palSetPad(GPIOD, 15);
+	    chThdSleepMilliseconds(50);
+	    palClearPad(GPIOD, 15);
+	  }
+	  palClearPad(GPIOD, 12);
+	  palClearPad(GPIOD, 13);
+	  palClearPad(GPIOD, 14);
+	  palClearPad(GPIOD, 15);
+#endif
+#if (BOARD_AXOLOTI_V03)
   palSetPadMode(GPIOE, 9, PAL_MODE_OUTPUT_PUSHPULL);
   palSetPadMode(GPIOE, 11, PAL_MODE_OUTPUT_PUSHPULL);
   palSetPadMode(GPIOE, 13, PAL_MODE_OUTPUT_PUSHPULL);
@@ -45,6 +71,7 @@ void BlinkenLights(void) {
   palClearPad(GPIOE, 11);
   palClearPad(GPIOE, 13);
   palClearPad(GPIOE, 14);
+#endif
 }
 
 Mutex Mutex_DMAStream_1_7; // shared: SPI3 (axoloti control) and I2C2 (codec)
@@ -109,9 +136,10 @@ void adc_configpads(void) {
   palSetPadMode(GPIOC, 3, PAL_MODE_INPUT_ANALOG);
   palSetPadMode(GPIOC, 4, PAL_MODE_INPUT_ANALOG);
   palSetPadMode(GPIOC, 5, PAL_MODE_INPUT_ANALOG);
-#elif (BOARD_STM32F4DISCOVERY)
 
-  palSetPadMode(GPIOA, 0, PAL_MODE_INPUT_ANALOG);
+#elif (BOARD_STM32F4DISCOVERY)||(BOARD_STM32F4DISCOVERY_1)
+
+  // skip User button palSetPadMode(GPIOA, 0, PAL_MODE_INPUT_ANALOG);
   palSetPadMode(GPIOA, 1, PAL_MODE_INPUT_ANALOG);
   palSetPadMode(GPIOA, 2, PAL_MODE_INPUT_ANALOG);
   palSetPadMode(GPIOA, 3, PAL_MODE_INPUT_ANALOG);
@@ -125,10 +153,10 @@ void adc_configpads(void) {
   palSetPadMode(GPIOC, 3, PAL_MODE_INPUT_ANALOG);
   palSetPadMode(GPIOC, 4, PAL_MODE_INPUT_ANALOG);
   palSetPadMode(GPIOC, 5, PAL_MODE_INPUT_ANALOG);
-  adcStart(&ADCD1, NULL);
 #else
 #error "ADC: No board defined?"
 #endif
+
 }
 
 /*

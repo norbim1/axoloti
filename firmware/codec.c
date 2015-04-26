@@ -22,6 +22,8 @@
 
 #if (BOARD_STM32F4DISCOVERY)
 #include "codec_CS43L22.h"
+#elif (BOARD_STM32F4DISCOVERY_1)
+#include "codec_UDA1380.h"
 #elif (BOARD_AXOLOTI_V03)
 #include "codec_ADAU1961.h"
 #elif (BOARD_AXOLOTI_V01)
@@ -45,6 +47,9 @@ void codec_init(void) {
     chThdSleepMilliseconds(100);
   }
 */
+#elif (BOARD_STM32F4DISCOVERY_1)
+  codec_UDA1380_i2s_init(SAMPLERATE);
+  codec_UDA1380_hw_init(SAMPLERATE);
 #elif ((BOARD_AXOLOTI_V03)||(BOARD_AXOLOTI_V05))
   codec_ADAU1961_i2s_init(SAMPLERATE);
   codec_ADAU1961_hw_init(SAMPLERATE);
@@ -69,6 +74,8 @@ void codec_clearbuffer(void) {
 
 #if (BOARD_STM32F4DISCOVERY)
 #include "codec_CS43L22.c"
+//#elif (BOARD_STM32F4DISCOVERY_1)
+//#include "codec_UDA1380.c"
 #elif (BOARD_AXOLOTI_V03)
 #include "codec_ADAU1961.c"
 #elif (BOARD_AXOLOTI_V05)
