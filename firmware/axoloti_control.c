@@ -21,6 +21,9 @@
 #include "axoloti_board.h"
 #include "ui.h"
 #include <string.h>
+#if (BOARD_STM32F4DISCOVERY_1)
+#include "encoders.h"
+#endif
 
 uint8_t lcd_buffer[(LCDHEADER + LCDWIDTH) * LCDROWS] __attribute__ ((section (".sram2")));
 uint8_t led_buffer[LCDHEADER + LCDWIDTH] __attribute__ ((section (".sram2")));
@@ -29,9 +32,13 @@ uint8_t control_rx_buffer[LCDHEADER + LCDWIDTH] __attribute__ ((section (".sram2
 /*
  * Low speed SPI configuration (328.125kHz, CPHA=0, CPOL=0, MSb first).
  */
+#if (BOARD_STM32F4DISCOVERY_1)
+static const SPIConfig ls_spicfg =
+    {NULL, GPIOA, 15, SPI_CR1_CPHA | SPI_CR1_CPOL | SPI_CR1_BR_1};
+#else
 static const SPIConfig ls_spicfg =
     {NULL, GPIOA, 15, SPI_CR1_BR_0 | SPI_CR1_BR_1};
-
+#endif
 uint8_t row_update_index;
 uint8_t k;
 
@@ -39,24 +46,37 @@ void do_axoloti_control(void) {
   row_update_index++;
   if (row_update_index == ((LCDROWS) + 1)) {
     row_update_index = 0;
+#if (BOARD_STM32F4DISCOVERY_1)
+	 ;
+#endif
     k++;
   }
   chMtxLock(&Mutex_DMAStream_1_7);
   spiAcquireBus(&SPID3); /* Acquire ownership of the bus.    */
   spiStart(&SPID3, &ls_spicfg); /* Setup transfer parameters.       */
   spiSelect(&SPID3); /* Slave Select assertion.          */
+#if (BOARD_STM32F4DISCOVERY_1)
+  if (row_update_index != (LCDROWS))
+    spiExchange(&SPID3, LCDWIDTH,
+                &lcd_buffer[((LCDHEADER + LCDWIDTH) * row_update_index)+ LCDHEADER],
+                control_rx_buffer);
+#else
   chThdSleepMilliseconds(2);
   if (row_update_index != (LCDROWS))
     spiExchange(&SPID3, LCDHEADER + LCDWIDTH,
                 &lcd_buffer[(LCDHEADER + LCDWIDTH) * row_update_index],
                 control_rx_buffer);
   else
-    spiExchange(&SPID3, LCDHEADER + LCDWIDTH, &led_buffer[0],
+  spiExchange(&SPID3, LCDHEADER + LCDWIDTH, &led_buffer[0],
                 control_rx_buffer);
+#endif
   spiUnselect(&SPID3); /* Slave Select de-assertion.       */
   spiReleaseBus(&SPID3); /* Ownership release.               */
   spiStop(&SPID3);
   chMtxUnlock();
+#if (BOARD_STM32F4DISCOVERY_1)
+    EncoderscheckStatus();
+#else
   if ((control_rx_buffer[0] == 'B') && (control_rx_buffer[1] == 'T')
       && (control_rx_buffer[2] == 'N')) {
     Btn_Nav_Or.word |= ((int32_t *)control_rx_buffer)[1];
@@ -66,6 +86,7 @@ void do_axoloti_control(void) {
     EncBuffer[2] += control_rx_buffer[14];
     EncBuffer[3] += control_rx_buffer[15];
   }
+#endif
 }
 
 void axoloti_control_init(void) {
@@ -81,6 +102,13 @@ void axoloti_control_init(void) {
   // MISO
   palSetPadMode(GPIOB, 3, PAL_MODE_ALTERNATE(6));
   // SCK
+#if (BOARD_STM32F4DISCOVERY_1)
+  palSetPadMode(GPIOD, 0, PAL_MODE_OUTPUT_PUSHPULL);
+  // OLED GLCD D/C
+  LCD_OLEDInit();
+  row_update_index = LCDROWS;
+  EncodersInit();
+#endif
   int i;
   // clear
   for (i = 0; i < (LCDHEADER + LCDWIDTH) * LCDROWS; i++)
@@ -105,6 +133,78 @@ void axoloti_control_init(void) {
 }
 
 #define _BV(bit) (1 << (bit))
+
+// Sends command byte to LCD
+// IN: command byte in <cmd>
+/////////////////////////////////////////////////////////////////////////////
+void LCD_sendCmd(uint8_t cmd)
+{
+      // send command data
+	  palClearPad(GPIOD, 0); /* Command mode D/C */
+	  chMtxLock(&Mutex_DMAStream_1_7);
+	  spiAcquireBus(&SPID3); /* Acquire ownership of the bus.    */
+	  spiStart(&SPID3, &ls_spicfg); /* Setup transfer parameters.       */
+	  spiSelect(&SPID3); /* Slave Select assertion.          */
+	  led_buffer[0]= cmd;
+	  spiSend(&SPID3, 1, led_buffer);
+	  spiUnselect(&SPID3); /* Slave Select de-assertion.       */
+	  spiReleaseBus(&SPID3); /* Ownership release.               */
+	  spiStop(&SPID3);
+	  chMtxUnlock();
+	  palSetPad(GPIOD, 0); /* Data mode D/C */
+}
+
+void LCD_OLEDInit(void)
+{
+      // initialize LCDs
+      LCD_sendCmd(0xa8); // Set MUX Ratio
+      LCD_sendCmd(0x3f);
+
+      LCD_sendCmd(0xd3); // Set Display Offset
+      LCD_sendCmd(0x00);
+
+      LCD_sendCmd(0x40); // Set Display Start Line
+
+//      if( !rotated ) {
+//	LCD_sendCmd(0xa0); // Set Segment re-map
+//	LCD_sendCmd(0xc0); // Set COM Output Scan Direction
+//      } else {
+	LCD_sendCmd(0xa1); // Set Segment re-map: rotated
+	LCD_sendCmd(0xc8); // Set COM Output Scan Direction: rotated
+//     }
+
+      LCD_sendCmd(0xda); // Set COM Pins hardware configuration
+      LCD_sendCmd(0x12);
+
+      LCD_sendCmd(0x81); // Set Contrast Control
+      LCD_sendCmd(0xef); // high
+
+      LCD_sendCmd(0xa4); // Disable Entiere Display On
+
+      LCD_sendCmd(0xa6); // Set Normal Display
+
+      LCD_sendCmd(0xd5); // Set OSC Frequency
+      LCD_sendCmd(0x80);
+
+      LCD_sendCmd(0x8d); // Enable charge pump regulator
+      LCD_sendCmd(0x14);
+
+      LCD_sendCmd(0xaf); // Display On
+
+      LCD_sendCmd(0x20); // Enable Horizontal mode
+      LCD_sendCmd(0x00);
+
+      LCD_sendCmd(0x21); // Horizontal mode addresses
+      LCD_sendCmd(0x00);
+      LCD_sendCmd(0x7f);
+
+      LCD_sendCmd(0x22); // Horizontal mode addresses
+      LCD_sendCmd(0x00);
+      LCD_sendCmd(0x07);
+
+}
+
+
 
 void LCD_updateBoundingBox(int x, int y, int x2, int y2) {
   (void)x;

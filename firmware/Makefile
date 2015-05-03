@@ -96,7 +96,7 @@ CSRC = $(PORTSRC) \
        $(CHIBIOS)/os/various/chprintf.c \
        $(CHIBIOS)/os/various/memstreams.c \
        axoloti_control.c \
-       codec_CS43L22.c \
+       encoders.c\
        codec_UDA1380.c \
        codec.c \
        axoloti.c \

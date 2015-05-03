@@ -29,7 +29,8 @@ extern uint8_t control_rx_buffer[(LCDHEADER + LCDWIDTH)];
 
 extern void do_axoloti_control(void);
 void axoloti_control_init(void);
-
+void LCD_OLEDInit(void);
+void LCD_sendCmd(uint8_t cmd);
 void LCD_clearDisplay(void);
 void LCD_drawPixel(int x, int y, uint16_t color);
 void LCD_setPixel(int x, int y);

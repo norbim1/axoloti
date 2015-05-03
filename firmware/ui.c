@@ -399,7 +399,11 @@ static msg_t ThreadUI(void *arg) {
     UIPollButtons2();
     UIUpdateLCD();
 //#endif
+#if (BOARD_STM32F4DISCOVERY_1)
+    chThdSleepMilliseconds(2);
+#else
     chThdSleepMilliseconds(10);
+#endif
   }
   return (msg_t)0;
 }
@@ -935,7 +939,7 @@ static void UIUpdateLCD(void) {
       else
         LCD_drawStringN(LCD_COL_INDENT, 3, " ", LCDWIDTH);
       int line;
-      for (line = 3; line < STATUSROW; line++) {
+      for (line = 4; line < STATUSROW; line++) {
         if (c < l)
           KVP_Display(LCD_COL_INDENT, line, &k[c++]);
         else
