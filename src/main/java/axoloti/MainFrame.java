@@ -170,6 +170,7 @@ public class MainFrame extends javax.swing.JFrame implements ActionListener {
         if (!prefs.getExpertMode()) {
             jMenuRegenerateObjects.setVisible(false);
             jMenuAutoTest.setVisible(false);
+            jMenuItemRefreshFWID.setVisible(false);
         }
         PopulateExamplesMenu(jMenuOpenExample);
 
@@ -241,6 +242,7 @@ public class MainFrame extends javax.swing.JFrame implements ActionListener {
         jMenuNew = new javax.swing.JMenuItem();
         jMenuOpen = new javax.swing.JMenuItem();
         jMenuOpenExample = new javax.swing.JMenu();
+        recentFileMenu1 = new axoloti.menus.RecentFileMenu();
         jSeparator2 = new javax.swing.JPopupMenu.Separator();
         jMenuReloadObjects = new javax.swing.JMenuItem();
         jMenuRegenerateObjects = new javax.swing.JMenuItem();
@@ -262,6 +264,7 @@ public class MainFrame extends javax.swing.JFrame implements ActionListener {
         jMenuItemFlashSDC = new javax.swing.JMenuItem();
         jMenuItemFlashDFU = new javax.swing.JMenuItem();
         jMenuItemFlashSTLINK = new javax.swing.JMenuItem();
+        jMenuItemRefreshFWID = new javax.swing.JMenuItem();
         jMenuWindow = new javax.swing.JMenu();
         jMenuHelp = new javax.swing.JMenu();
         jMenuHelpContents = new javax.swing.JMenuItem();
@@ -358,6 +361,9 @@ jMenuOpen.addActionListener(new java.awt.event.ActionListener() {
 
     jMenuOpenExample.setText("Open example");
     jMenuFile.add(jMenuOpenExample);
+
+    recentFileMenu1.setText("Open recent");
+    jMenuFile.add(recentFileMenu1);
     jMenuFile.add(jSeparator2);
 
     jMenuReloadObjects.setText("Reload Objects");
@@ -492,6 +498,14 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
         }
     });
     jMenuFirmware.add(jMenuItemFlashSTLINK);
+
+    jMenuItemRefreshFWID.setText("Refresh firmware ID");
+    jMenuItemRefreshFWID.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            jMenuItemRefreshFWIDActionPerformed(evt);
+        }
+    });
+    jMenuFirmware.add(jMenuItemRefreshFWID);
 
     jMenuBoard.add(jMenuFirmware);
 
@@ -714,6 +728,10 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
         Quit();
     }//GEN-LAST:event_formWindowClosing
 
+    private void jMenuItemRefreshFWIDActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRefreshFWIDActionPerformed
+        updateLinkFirmwareID();
+    }//GEN-LAST:event_jMenuItemRefreshFWIDActionPerformed
+
     public void NewPatch() {
         PatchGUI patch1 = new PatchGUI();
         PatchFrame pf = new PatchFrame(patch1, qcmdprocessor);
@@ -762,6 +780,7 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
             patch1.setFileNamePath(f.getPath());
             pf.setVisible(true);
             patches.add(patch1);
+            MainFrame.prefs.addRecentFile(f.getAbsolutePath());
         } catch (Exception ex) {
             Logger.getLogger(AxoObjects.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -794,6 +813,7 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
     private javax.swing.JMenuItem jMenuItemPanic;
     private javax.swing.JMenuItem jMenuItemPing;
     private javax.swing.JMenuItem jMenuItemPreferences;
+    private javax.swing.JMenuItem jMenuItemRefreshFWID;
     private javax.swing.JMenuItem jMenuNew;
     private javax.swing.JMenuItem jMenuOpen;
     private javax.swing.JMenu jMenuOpenExample;
@@ -810,6 +830,7 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
     private javax.swing.JPopupMenu.Separator jSeparator2;
     private javax.swing.JPopupMenu.Separator jSeparator3;
     private javax.swing.JTextPane jTextPaneLog;
+    private axoloti.menus.RecentFileMenu recentFileMenu1;
     // End of variables declaration//GEN-END:variables
 
     public void SetProgressValue(int i) {
@@ -840,6 +861,7 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
                 break;
             }
         }
+        prefs.SavePrefs();
         if (patches.isEmpty()) {
             System.exit(0);
         }
@@ -851,6 +873,8 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
 
     public void updateLinkFirmwareID() {
         LinkFirmwareID = FirmwareID.getFirmwareID();
+        TargetFirmwareID = LinkFirmwareID;
+        jLabelFirmwareID.setText("Firmware ID = " + LinkFirmwareID);
         Logger.getLogger(MainFrame.class.getName()).info("Link to firmware ID " + LinkFirmwareID);
     }
 
@@ -860,7 +884,6 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
             return;
         }
         TargetFirmwareID = firmwareId;
-        jLabelFirmwareID.setText("Firmware ID = " + firmwareId);
         if (!firmwareId.equals(this.LinkFirmwareID)) {
             Logger.getLogger(AxoObjects.class.getName()).severe("Firmware ID mismatch! Please flash the firmware first!");
         }

@@ -36,6 +36,11 @@
                 <Property name="text" type="java.lang.String" value="Open example"/>
               </Properties>
             </Menu>
+            <Menu class="axoloti.menus.RecentFileMenu" name="recentFileMenu1">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Open recent"/>
+              </Properties>
+            </Menu>
             <MenuItem class="javax.swing.JPopupMenu$Separator" name="jSeparator2">
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="jMenuReloadObjects">
@@ -184,6 +189,14 @@
                   </Properties>
                   <Events>
                     <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemFlashSTLINKActionPerformed"/>
+                  </Events>
+                </MenuItem>
+                <MenuItem class="javax.swing.JMenuItem" name="jMenuItemRefreshFWID">
+                  <Properties>
+                    <Property name="text" type="java.lang.String" value="Refresh firmware ID"/>
+                  </Properties>
+                  <Events>
+                    <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemRefreshFWIDActionPerformed"/>
                   </Events>
                 </MenuItem>
               </SubComponents>
