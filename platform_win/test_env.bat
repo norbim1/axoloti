@@ -1,13 +1,13 @@
 @ECHO OFF
-CALL %~dp0\path.bat
+CALL %~sdp0\path.bat
 
-DIR %~dp0\..\chibios > NUL 2> NUL
+DIR %~sdp0\..\chibios > NUL 2> NUL
 IF %ERRORLEVEL% NEQ 0 (
 	ECHO error: chibios directory missing
 	GOTO fail
 )
 
-DIR %~dp0\..\chibios\ext\fatfs > NUL 2> NUL
+DIR %~sdp0\..\chibios\ext\fatfs > NUL 2> NUL
 IF %ERRORLEVEL% NEQ 0 (
 	ECHO error: fatfs not found in chibios
 	GOTO fail
@@ -25,10 +25,10 @@ IF %ERRORLEVEL% NEQ 0 (
 	GOTO fail
 )
 
-ECHO "ok"
+ECHO Environment OK
 goto :EOF
 
-
 :fail
-ECHO environment incomplete!
+ECHO Environment incomplete!
+ECHO Run platform_win\get_dependencies.bat...
 PAUSE

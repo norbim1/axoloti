@@ -23,6 +23,7 @@ import axoloti.dialogs.FileManagerFrame;
 import axoloti.dialogs.KeyboardFrame;
 import axoloti.dialogs.PreferencesFrame;
 import axoloti.object.AxoObjects;
+import axoloti.utils.Constants;
 import axoloti.utils.FirmwareID;
 import axoloti.utils.Preferences;
 import generatedobjects.GeneratedObjects;
@@ -81,6 +82,7 @@ public class MainFrame extends javax.swing.JFrame implements ActionListener {
     QCmdProcessor qcmdprocessor;
     Thread qcmdprocessorThread;
     static public Cursor transparentCursor;
+    AxolotiMidiInput midiInput;
 
     /**
      * Creates new form MainFrame
@@ -176,6 +178,8 @@ public class MainFrame extends javax.swing.JFrame implements ActionListener {
 
         axoObjects = new AxoObjects();
         axoObjects.LoadAxoObjects();
+        midiInput = new AxolotiMidiInput();
+        initMidiInput(prefs.getMidiInputDevice());
     }
 
     void PopulateExamplesMenu(JMenu parent) {
@@ -263,7 +267,6 @@ public class MainFrame extends javax.swing.JFrame implements ActionListener {
         jMenuItemFCompile = new javax.swing.JMenuItem();
         jMenuItemFlashSDC = new javax.swing.JMenuItem();
         jMenuItemFlashDFU = new javax.swing.JMenuItem();
-        jMenuItemFlashSTLINK = new javax.swing.JMenuItem();
         jMenuItemRefreshFWID = new javax.swing.JMenuItem();
         jMenuWindow = new javax.swing.JMenu();
         jMenuHelp = new javax.swing.JMenu();
@@ -491,14 +494,6 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
     });
     jMenuFirmware.add(jMenuItemFlashDFU);
 
-    jMenuItemFlashSTLINK.setText("Flash with STLINK");
-    jMenuItemFlashSTLINK.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-            jMenuItemFlashSTLINKActionPerformed(evt);
-        }
-    });
-    jMenuFirmware.add(jMenuItemFlashSTLINK);
-
     jMenuItemRefreshFWID.setText("Refresh firmware ID");
     jMenuItemRefreshFWID.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -607,16 +602,6 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
         jMenuWindow.removeAll();
     }//GEN-LAST:event_jMenuWindowMenuDeselected
 
-    private void jMenuItemFlashDFUActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFlashDFUActionPerformed
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdStop());
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdDisconnect());
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdFlashDFU());
-    }//GEN-LAST:event_jMenuItemFlashDFUActionPerformed
-
-    private void jMenuItemFCompileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFCompileActionPerformed
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdCompileFirmware());
-    }//GEN-LAST:event_jMenuItemFCompileActionPerformed
-
     private void jMenuItemPanicActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemPanicActionPerformed
         qcmdprocessor.Panic();
     }//GEN-LAST:event_jMenuItemPanicActionPerformed
@@ -667,12 +652,6 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
         axoObjects.LoadAxoObjects();
     }//GEN-LAST:event_jMenuReloadObjectsActionPerformed
 
-    private void jMenuItemFlashSTLINKActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFlashSTLINKActionPerformed
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdStop());
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdDisconnect());
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdFlashSTLink());
-    }//GEN-LAST:event_jMenuItemFlashSTLINKActionPerformed
-
     PreferencesFrame pp;
     private void jMenuItemPreferencesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemPreferencesActionPerformed
         if (pp == null) {
@@ -718,12 +697,6 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
         }
     }//GEN-LAST:event_jMenuAutoTestActionPerformed
 
-    private void jMenuItemFlashSDCActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFlashSDCActionPerformed
-        qcmdprocessor.AppendToQueue(new QCmdUploadFile(new File("firmware/build/axoloti.bin"), "firmware.bin"));
-        qcmdprocessor.AppendToQueue(new QCmdUploadPatch(new File("firmware/flasher/build/flasher.bin")));
-        qcmdprocessor.AppendToQueue(new QCmdStart());
-    }//GEN-LAST:event_jMenuItemFlashSDCActionPerformed
-
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         Quit();
     }//GEN-LAST:event_formWindowClosing
@@ -731,6 +704,22 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
     private void jMenuItemRefreshFWIDActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemRefreshFWIDActionPerformed
         updateLinkFirmwareID();
     }//GEN-LAST:event_jMenuItemRefreshFWIDActionPerformed
+
+    private void jMenuItemFlashDFUActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFlashDFUActionPerformed
+        qcmdprocessor.AppendToQueue(new qcmds.QCmdStop());
+        qcmdprocessor.AppendToQueue(new qcmds.QCmdDisconnect());
+        qcmdprocessor.AppendToQueue(new qcmds.QCmdFlashDFU());
+    }//GEN-LAST:event_jMenuItemFlashDFUActionPerformed
+
+    private void jMenuItemFlashSDCActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFlashSDCActionPerformed
+        qcmdprocessor.AppendToQueue(new QCmdUploadFile(new File(Constants.firmwaredir + "/build/axoloti.bin"), "firmware.bin"));
+        qcmdprocessor.AppendToQueue(new QCmdUploadPatch(new File(Constants.firmwaredir + "/flasher/build/flasher.bin")));
+        qcmdprocessor.AppendToQueue(new QCmdStart());
+    }//GEN-LAST:event_jMenuItemFlashSDCActionPerformed
+
+    private void jMenuItemFCompileActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemFCompileActionPerformed
+        qcmdprocessor.AppendToQueue(new qcmds.QCmdCompileFirmware());
+    }//GEN-LAST:event_jMenuItemFCompileActionPerformed
 
     public void NewPatch() {
         PatchGUI patch1 = new PatchGUI();
@@ -809,7 +798,6 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
     private javax.swing.JMenuItem jMenuItemFDisconnect;
     private javax.swing.JMenuItem jMenuItemFlashDFU;
     private javax.swing.JMenuItem jMenuItemFlashSDC;
-    private javax.swing.JMenuItem jMenuItemFlashSTLINK;
     private javax.swing.JMenuItem jMenuItemPanic;
     private javax.swing.JMenuItem jMenuItemPing;
     private javax.swing.JMenuItem jMenuItemPreferences;
@@ -902,4 +890,7 @@ jMenuSelectCom.addActionListener(new java.awt.event.ActionListener() {
         }
     }
 
+    public void initMidiInput(String midiInputDevice) {
+        midiInput.start(midiInputDevice);
+    }
 }
