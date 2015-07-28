@@ -1,5 +1,10 @@
 <objdefs>
+<<<<<<< HEAD
    <obj.normal id="clock" sha="5686480d6bc46933eac28025298c8d288de90db8">
+=======
+   <obj.normal id="clock" uuid="7f6f35e92d2c29e950af2b3af5cebb2e9e3b778c" sha="e288c8fe1409469b1d92d9309b18db3430e1ecd4">
+      <upgradeSha>5686480d6bc46933eac28025298c8d288de90db8</upgradeSha>
+>>>>>>> JohannesTaelman/master
       <sDescription>Midi clock master, als outputs Midi clock, start, stop, and continue messages. Sends to midi/in/* objects only.</sDescription>
       <author>Johannes Taelman</author>
       <license>BSD</license>
@@ -8,9 +13,9 @@
          <bool32.rising name="rst" description="Reset"/>
       </inlets>
       <outlets>
-         <bool32 name="active" description="Song is playing" SumBuffer="false"/>
-         <int32 name="pos4ppq" description="Position in 4 counts per quarter" SumBuffer="false"/>
-         <int32 name="pos24ppq" description="Position in 24 counts per quarter" SumBuffer="false"/>
+         <bool32 name="active" description="Song is playing"/>
+         <int32 name="pos4ppq" description="Position in 4 counts per quarter"/>
+         <int32 name="pos24ppq" description="Position in 24 counts per quarter"/>
       </outlets>
       <displays/>
       <params>
@@ -29,30 +34,34 @@ bool rstp;
 _posfrac = 0;
 _pos24ppq = 0;
 rstp = 0;]]></code.init>
-      <code.krate><![CDATA[if (%rst% & !rstp){
+      <code.krate><![CDATA[if (inlet_rst & !rstp){
    rstp = 1;
    _posfrac = 0;
    _pos24ppq = 0;
-} else if (!%rst%){
+} else if (!inlet_rst){
    rstp = 0;
 }
-if (%run% && !_active) {
+if (inlet_run && !_active) {
   _active = 1;
   if (_pos24ppq)     PatchMidiInHandler(MIDI_DEVICE_INTERNAL, 0,MIDI_START,0,0);
   else     PatchMidiInHandler(MIDI_DEVICE_INTERNAL, 0,MIDI_CONTINUE,0,0);
+<<<<<<< HEAD
 } else if (!%run% && _active){
+=======
+} else if (!inlet_run && _active){
+>>>>>>> JohannesTaelman/master
   _active = 0;
   PatchMidiInHandler(MIDI_DEVICE_INTERNAL, 0,MIDI_STOP,0,0);
 }if (_active) {
-  _posfrac += %bpm%;
+  _posfrac += param_bpm;
   if (_posfrac & 1<<31) {
     _posfrac &= (1<<31)-1;
     _pos24ppq++;
     PatchMidiInHandler(MIDI_DEVICE_INTERNAL, 0,MIDI_TIMING_CLOCK,0,0);
   }
 }
-%pos4ppq% = _pos24ppq/6;
-%pos24ppq% = _pos24ppq;
+outlet_pos4ppq = _pos24ppq/6;
+outlet_pos24ppq = _pos24ppq;
 ]]></code.krate>
    </obj.normal>
 </objdefs>

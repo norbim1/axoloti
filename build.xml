@@ -7,7 +7,8 @@
 <!-- the Compile on Save feature is turned off for the project. -->
 <!-- You can turn off the Compile on Save (or Deploy on Save) setting -->
 <!-- in the project's Project Properties dialog box.-->
-<project name="Axoloti" default="default" basedir=".">
+<project name="Axoloti" default="default" basedir="." 
+ xmlns:fx="javafx:com.sun.javafx.tools.ant">
     <description>Builds, tests, and runs the project Axoloti.</description>
     <import file="nbproject/build-impl.xml"/>
     <!--
@@ -68,7 +69,6 @@
     the compile target as the regular run target does. Again, for a list of available 
     properties which you can use, check the target you are overriding in the
     nbproject/build-impl.xml file. 
-
     -->
     
   <property name="built_by"  value="${user.name}"/>
@@ -76,6 +76,9 @@
   <!-- run the ant timestamp task -->
   <tstamp/>
 
+  <target name="-post-init">
+	<antcall target="create.build.version"/>
+  </target>
   <!-- Overrides -do-jar-->
   <target name="-do-jar">
 
@@ -86,6 +89,7 @@
         <attribute name="Built-By" value="${built_by}"/>
         <attribute name="Created-By" value="${built_by}"/>
         <attribute name="Built-Date" value="${TODAY}"/>
+        <attribute name="Implementation-Version" value="${build.version}"/>
         <attribute name="SplashScreen-Image" value="resources/splash.png"/>
       </manifest>
 
@@ -93,8 +97,15 @@
       <fileset dir="build/classes"/>
 
       <!-- Include external library -->
-      <zipfileset excludes="META-INF/*.SF" src="lib/jssc.jar"/>
       <zipfileset excludes="META-INF/*.SF" src="lib/simple-xml-2.7.1.jar"/>
+      <zipfileset excludes="META-INF/*.SF" src="lib/usb4java-1.2.0/lib/usb4java-1.2.0.jar"/>
+      <zipfileset excludes="META-INF/*.SF" src="lib/usb4java-1.2.0/lib/libusb4java-1.2.0-linux-arm.jar"/>
+      <zipfileset excludes="META-INF/*.SF" src="lib/usb4java-1.2.0/lib/libusb4java-1.2.0-linux-x86.jar"/>
+      <zipfileset excludes="META-INF/*.SF" src="lib/usb4java-1.2.0/lib/libusb4java-1.2.0-linux-x86_64.jar"/>
+      <zipfileset excludes="META-INF/*.SF" src="lib/usb4java-1.2.0/lib/libusb4java-1.2.0-osx-x86.jar"/>
+      <zipfileset excludes="META-INF/*.SF" src="lib/usb4java-1.2.0/lib/libusb4java-1.2.0-osx-x86_64.jar"/>
+      <zipfileset excludes="META-INF/*.SF" src="lib/usb4java-1.2.0/lib/libusb4java-1.2.0-windows-x86.jar"/>
+      <zipfileset excludes="META-INF/*.SF" src="lib/usb4java-1.2.0/lib/libusb4java-1.2.0-windows-x86_64.jar"/>
 
       <!-- include source files -->
       <fileset dir="src">
@@ -102,5 +113,142 @@
       </fileset>
     </jar>
   </target>
+
+  <target name="-post-jar">
+	<antcall target="bundle"/>
+	<antcall target="runtime"/>
+  </target>
+
+  <target name="runtime" if="build.runtime">
+		<mkdir dir="build/runtime"/>
+		<mkdir dir="build/runtime/macosx" />
+		<mkdir dir="build/runtime/tmp/axoloti_runtime" />
+
+		<!--Mac -->
+		<exec dir="." executable="cp" os="Mac OS X">
+			<arg line="-R platform_osx build/runtime/tmp/axoloti_runtime"/>
+		</exec>
+		<exec dir="." executable="hdiutil" os="Mac OS X">
+			<arg line="create -megabytes 400 build/runtime/macosx/axoloti_runtime.dmg -volname 'Axoloti Runtime'  -srcfolder build/runtime/tmp" />
+		</exec>
+		<!--Linux -->
+		<exec dir="." executable="cp" os="Linux">
+			<arg line="-R platform_linux build/runtime/tmp/axoloti_runtime"/>
+		</exec>
+		<mkdir dir="build/runtime/linux"/>
+		<exec dir="build/runtime/tmp" executable="tar" os="Linux">
+			<arg value="-cvf"/>
+			<arg value="../linux/axoloti_runtime.tar"/>
+			<arg value="."/>
+		</exec>
+		<!--Windows -->
+		<mkdir dir="build/runtime/tmp_win/axoloti_runtime"/>
+		<exec dir="." executable="cp" os="Windows">
+			<arg line="-R platform_win build/runtime/tmp_win/axoloti_runtime"/>
+		</exec>
+  </target>
+
+  <target name="bundle" if="build.bundle">
+	<echo>${java.home}</echo>
+	<taskdef resource="com/sun/javafx/tools/ant/antlib.xml"      
+			uri="javafx:com.sun.javafx.tools.ant"
+			classpath=".:${java.home}/../lib/ant-javafx.jar"/>    
+	<fx:resources id="appRes">
+		 <fx:fileset dir="dist">
+         		<include name="axoloti-app.jar"/>
+		 </fx:fileset>
+		 <fx:fileset dir="lib">
+			 <include name="simple-xml-2.7.1.jar"/>
+			 <include name="usb4java-1.2.0/lib/usb4java-1.2.0.jar"/>
+			 <include name="usb4java-1.2.0/lib/libusb4java-1.2.0-linux-arm.jar"/>
+			 <include name="usb4java-1.2.0/lib/libusb4java-1.2.0-linux-x86.jar"/>
+			 <include name="usb4java-1.2.0/lib/libusb4java-1.2.0-linux-x86_64.jar"/>
+			 <include name="usb4java-1.2.0/lib/libusb4java-1.2.0-osx-x86.jar"/>
+			 <include name="usb4java-1.2.0/lib/libusb4java-1.2.0-osx-x86_64.jar"/>
+			 <include name="usb4java-1.2.0/lib/libusb4java-1.2.0-windows-x86.jar"/>
+			 <include name="usb4java-1.2.0/lib/libusb4java-1.2.0-windows-x86_64.jar"/>
+		 </fx:fileset>
+		 <fx:fileset dir=".">
+			 <include name="patches/**/*"/>
+			 <include name="objects/**/*"/>
+			 <include name="firmware/**/*"/>
+			 <include name="chibios/**/*"/>
+			 <include name="CMSIS/**/*"/>
+			 <include name="patch/**/*"/>
+			 <include name="*.txt"/>
+		 </fx:fileset>
+	</fx:resources>
+
+	<fx:jar destfile="dist/axoloti-app.jar">
+		<!-- Details about application -->
+		<fx:application name="Axoloti" mainClass="axoloti.Axoloti" version="${build.version}"/>
+	 
+		<!-- Define what auxilary resources are needed -->
+		<fx:resources refid="appRes"/>
+				
+		<!-- What to include into result jar file?
+			 Everything in the build tree -->
+		<fileset dir="build/classes"/>
+	 
+		<!-- Customize jar manifest (optional) -->
+		<manifest>
+			<attribute name="Implementation-Vendor" value="Axoloti"/>
+			<attribute name="Implementation-Version" value="${build.version}"/>
+			<attribute name="Main-Class" value="axoloti.Axoloti"/>
+			<attribute name="Built-By" value="${built_by}"/>
+			<attribute name="Created-By" value="${built_by}"/>
+			<attribute name="Built-Date" value="${TODAY}"/>
+			<attribute name="SplashScreen-Image" value="resources/splash.png"/>
+		</manifest>
+	</fx:jar> 
+
+    	<fx:deploy os="Linux" nativeBundles="deb" width="100" height="100" outdir="build/" outfile="AxolotiApp">
+            <fx:info title="Axoloti" 
+		     vendor="axoloti" 
+		     description="Axoloti application"
+		     license="GPL"
+		     copyright="Axoloti.com" >
+		<fx:icon href="src/main/java/resources/axoloti_icon.png"/>
+	      </fx:info>
+            <fx:application mainClass="axoloti.Axoloti"/>
+	    <fx:resources refid="appRes"/>
+    	</fx:deploy>
+
+    	<fx:deploy os="Mac OS X" nativeBundles="dmg" width="100" height="100" outdir="build/" outfile="AxolotiApp" version="${build.version}">
+            <fx:info title="Axoloti" 
+		     vendor="axoloti" 
+		     description="Axoloti application"
+		     license="GPL"
+		     copyright="Axoloti.com" >
+		<fx:icon href="src/main/java/resources/axoloti_icon.icns"/>
+	      </fx:info>
+            <fx:application mainClass="axoloti.Axoloti"/>
+	    <fx:resources refid="appRes"/>
+    	</fx:deploy>
+
+    	<fx:deploy os="Windows" nativeBundles="msi" width="100" height="100" outdir="build/" outfile="AxolotiApp" version="${build.version}">
+            <fx:info title="Axoloti" 
+		     vendor="axoloti" 
+		     description="Axoloti application"
+		     license="GPL"
+		     copyright="Axoloti.com" >
+		<fx:icon href="src/main/java/resources/axoloti_icon.png"/>
+	      </fx:info>
+            <fx:application mainClass="axoloti.Axoloti"/>
+	    <fx:resources refid="appRes"/>
+    	</fx:deploy>
+
+  </target>
+
+	<target name="create.build.version">
+		<exec executable="git" outputproperty="build.version">
+			<arg line = "describe --long --tags --dirty --always" />
+		</exec>
+		<echo output="src/main/java/axoloti/Version.java" >package axoloti;</echo>
+		<echo output="src/main/java/axoloti/Version.java" append="true">public class Version {</echo>
+		<echo output="src/main/java/axoloti/Version.java" append="true">public final static String AXOLOTI_VERSION ="${build.version}";</echo>
+		<echo output="src/main/java/axoloti/Version.java" append="true">};</echo>
+	</target>
+
       
 </project>

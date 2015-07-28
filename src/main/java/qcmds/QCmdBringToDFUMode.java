@@ -17,10 +17,7 @@
  */
 package qcmds;
 
-import axoloti.SerialConnection;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import jssc.SerialPortException;
+import axoloti.Connection;
 
 /**
  *
@@ -35,22 +32,12 @@ public class QCmdBringToDFUMode implements QCmdSerialTask {
 
     @Override
     public String GetDoneMessage() {
-        return "Done enabling DFU";
+        return "Done enabling DFU. Serial connection will now break, but firmware can be flashed with DFU.";
     }
 
     @Override
-    public QCmd Do(SerialConnection serialConnection) {
-        serialConnection.BringToDFU();
-        try {
-            serialConnection.TransmitStart();
-            if (serialConnection.WaitSync()) {
-                return this;
-            } else {
-                return new QCmdDisconnect();
-            }
-        } catch (SerialPortException ex) {
-            Logger.getLogger(QCmdPing.class.getName()).log(Level.SEVERE, null, ex);
-            return new QCmdDisconnect();
-        }
+    public QCmd Do(Connection connection) {
+        connection.BringToDFU();
+        return this;
     }
 }

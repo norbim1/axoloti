@@ -50,7 +50,7 @@
 #include "ch.h"
 #include "hal.h"
 #include "axoloti_board.h"
-
+#include "sysmon.h"
 /**
  * @brief  Configures the FMC and GPIOs to interface with the SDRAM memory.
  *         This function must be called before any read/write operation
@@ -107,74 +107,9 @@ void SDRAM_Init(void) {
 }
 
 void configSDRAM(void) {
-  palSetPadMode(GPIOF, 0, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOF, 1, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOF, 2, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOF, 3, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOF, 4, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOF, 5, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOF, 12, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOF, 13, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOF, 14, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOF, 15, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOG, 0, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOG, 1, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOG, 2, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOG, 4, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOG, 5, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOD, 14, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOD, 15, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOD, 0, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOD, 1, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOE, 7, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOE, 8, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOE, 9, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOE, 10, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOE, 11, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOE, 12, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOE, 13, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOE, 14, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOE, 15, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOD, 8, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOD, 9, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOD, 10, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOE, 0, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOE, 1, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOG, 8, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOC, 0, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOF, 11, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOG, 15, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOH, 2, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOH, 3, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOH, 6, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOH, 7, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOH, 5, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOC, 2, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOC, 3, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
-  palSetPadMode(GPIOB, 5, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-  palSetPadMode(GPIOB, 6, PAL_MODE_ALTERNATE(12) | PAL_STM32_OSPEED_HIGHEST);
-
   SDRAM_Init();
 
-  palSetPadMode(LED1_PORT, LED1_PIN, PAL_MODE_OUTPUT_PUSHPULL);
-
+#if 0
   int qsource[16];
   int qdest[16];
 
@@ -184,20 +119,18 @@ void configSDRAM(void) {
   }
 //  a small test...
   SDRAM_WriteBuffer(&qsource[0], 0, 16);
-  palClearPad(LED1_PORT, LED1_PIN);
   for (i = 0; i < 16; i++) {
     qdest[i] = 0;
   }
   SDRAM_ReadBuffer(&qdest[0], 0, 16);
-  palSetPad(LED1_PORT, LED1_PIN);
+#endif
 }
 
 void memTest(void) {
   int memSize = 8 * 1024 * 1024; // 8MB
   void *base;
-  base = 0xC0000000;
+  base = (void *)0xC0000000;
   int i;
-  int err = 0;
   // 4MB test
   const uint32_t a = 22695477;
   const uint32_t c = 1;
@@ -216,21 +149,16 @@ void memTest(void) {
       ((volatile uint32_t *)base)[i] = x;
     }
     // read/verify
-    palSetPad(LED1_PORT, LED1_PIN);
     x = iter;
     for (i = 0; i < memSize / 4; i++) {
       x = (a * x) + c;
       if (((volatile uint32_t *)base)[i] != x) {
+        setErrorFlag(ERROR_SDRAM);
         while (1) {
-          //fail
-          palSetPad(LED1_PORT, LED1_PIN);
           chThdSleepMilliseconds(100);
-          palClearPad(LED1_PORT, LED1_PIN);
-          chThdSleepMilliseconds(200);
         }
       }
     }
-    palClearPad(LED1_PORT, LED1_PIN);
   }
   // scattered byte write at linear congruential generator addresses
   // 300 ms execution time for one iteration: 3.3M scattered read+write per second
@@ -243,21 +171,16 @@ void memTest(void) {
       ((volatile uint8_t *)base)[x & (memSize - 1)] = (uint8_t)i;
     }
     // read/verify
-    palSetPad(LED1_PORT, LED1_PIN);
     x = iter;
     for (i = 0; i < 1024 * 1024; i++) {
       x = (a * x) + c;
       if (((volatile uint8_t *)base)[x & (memSize - 1)] != (uint8_t)i) {
+        setErrorFlag(ERROR_SDRAM);
         while (1) {
-          //fail
-          palSetPad(LED1_PORT, LED1_PIN);
           chThdSleepMilliseconds(100);
-          palClearPad(LED1_PORT, LED1_PIN);
-          chThdSleepMilliseconds(200);
         }
       }
     }
-    palClearPad(LED1_PORT, LED1_PIN);
   }
 }
 
@@ -324,7 +247,7 @@ void SDRAM_InitSequence(void) {
   /* Program the external memory mode register */
   tmpr = (uint32_t)SDRAM_MODEREG_BURST_LENGTH_2 |
   SDRAM_MODEREG_BURST_TYPE_SEQUENTIAL |
-  SDRAM_MODEREG_CAS_LATENCY_3 |
+  SDRAM_MODEREG_CAS_LATENCY_2 |
   SDRAM_MODEREG_OPERATING_MODE_STANDARD |
   SDRAM_MODEREG_WRITEBURST_MODE_SINGLE;
 

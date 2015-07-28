@@ -74,7 +74,7 @@ extern "C" {
    * @brief  FMC SDRAM CAS Latency
    */
   /* #define SDRAM_CAS_LATENCY   FMC_CAS_Latency_2  */
-#define SDRAM_CAS_LATENCY    FMC_CAS_Latency_3
+#define SDRAM_CAS_LATENCY    FMC_CAS_Latency_2
 
   /**
    * @brief  FMC SDRAM Memory clock period
@@ -109,6 +109,8 @@ extern "C" {
                          uint32_t uwBufferSize);
   void SDRAM_ReadBuffer(uint32_t* pBuffer, uint32_t uwReadAddress,
                         uint32_t uwBufferSize);
+
+  void configSDRAM(void);
 
 #ifdef __cplusplus
 }

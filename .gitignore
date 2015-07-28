@@ -3,6 +3,7 @@
 #################
 
 firmware/build/*
+firmware/flasher/flasher_build/*
 firmware/.dep/*
 control_firmware/build/*
 control_firmware/.dep/*
@@ -27,6 +28,9 @@ patch/xpatch.map
 /dist/
 hs_err_*.log
 axoloti_osx.zip
+
+#Version file
+src/main/java/axoloti/Version.java
 
 #################
 ## Eagle

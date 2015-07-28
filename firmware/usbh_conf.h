@@ -111,29 +111,14 @@ extern void fakefree(void * p);
 #define osEventMessage 1
 typedef uint8_t osEvent;
 
-#define LOG_ON_UART 0
-#define LOG_ON_CDC 1
-
 //#define DEBUG_ON_GPIO
-
-#if LOG_ON_UART
-extern BaseSequentialStream SD2;
-#define LOGSTREAM SD2
-#define TransmitTextMessageHeader()
-#elif  LOG_ON_CDC
-extern BaseSequentialStream SDU1;
-void TransmitTextMessageHeader(void);
-#define LOGSTREAM SDU1
-#endif
 
  /* DEBUG macros */
 
 
 #if (USBH_DEBUG_LEVEL > 0)
-#define  USBH_UsrLog(...)   TransmitTextMessageHeader();\
-                            chprintf(&LOGSTREAM,__VA_ARGS__);\
-                            chprintf(&LOGSTREAM,"\r\n");\
-                            chSequentialStreamPut(&LOGSTREAM, 0)
+extern void LogTextMessage(const char* format, ...);
+#define  USBH_UsrLog(...)   LogTextMessage(__VA_ARGS__);
 #else
 #define USBH_UsrLog(...)
 #endif
@@ -141,22 +126,14 @@ void TransmitTextMessageHeader(void);
 
 #if (USBH_DEBUG_LEVEL > 1)
 
-#define  USBH_ErrLog(...)   TransmitTextMessageHeader();\
-                            chprintf(&LOGSTREAM,"ERROR: ") ;\
-                            chprintf(&LOGSTREAM,__VA_ARGS__);\
-                            chprintf(&LOGSTREAM,"\r\n");\
-                            chSequentialStreamPut(&LOGSTREAM, 0)
+#define  USBH_ErrLog(...)   LogTextMessage(__VA_ARGS__);
 #else
 #define USBH_ErrLog(...)
 #endif
 
 
 #if (USBH_DEBUG_LEVEL > 2)
-#define  USBH_DbgLog(...)   TransmitTextMessageHeader();\
-                            chprintf(&LOGSTREAM,"DEBUG : ") ;\
-                            chprintf(&LOGSTREAM,__VA_ARGS__);\
-                            chprintf(&LOGSTREAM,"\r\n");\
-                            chSequentialStreamPut(&LOGSTREAM, 0)
+#define  USBH_DbgLog(...)   LogTextMessage(__VA_ARGS__);
 #else
 #define USBH_DbgLog(...)
 #endif
