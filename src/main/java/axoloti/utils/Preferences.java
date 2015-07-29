@@ -135,7 +135,7 @@ public class Preferences {
     }
 
     static String GetPrefsFileLoc() {
-        return System.getProperty(axoloti.Axoloti.HOME_DIR)+File.separator+".preferences.xml";
+        return System.getProperty(axoloti.Axoloti.HOME_DIR)+File.separator+"axoloti.prefs";
     }
     
     private static Preferences singleton;
@@ -176,7 +176,7 @@ public class Preferences {
         Logger.getLogger(Preferences.class.getName()).log(Level.INFO, "Saving preferences...");
         Serializer serializer = new Persister();
         File f = new File(GetPrefsFileLoc());
-        Logger.getLogger(Preferences.class.getName()).log(Level.INFO, "preferences path : " + f.getAbsolutePath());
+        Logger.getLogger(Preferences.class.getName()).log(Level.INFO, "preferences path : {0}", f.getAbsolutePath());
         try {
             serializer.write(this, f);
         } catch (Exception ex) {

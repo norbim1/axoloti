@@ -165,7 +165,8 @@ public class PatchGUI extends Patch {
                     //System.out.println("importdata 2 " + t.getTransferData(DataFlavor.stringFlavor));
                     if (!locked) {
                         if (t.isDataFlavorSupported(DataFlavor.stringFlavor)) {
-                            paste((String) t.getTransferData(DataFlavor.stringFlavor), false);
+
+                            paste((String) t.getTransferData(DataFlavor.stringFlavor), comp.getMousePosition(), false);
                         }
                     }
                 } catch (UnsupportedFlavorException ex) {
@@ -267,7 +268,7 @@ public class PatchGUI extends Patch {
                     }
                 } else if (((ke.getKeyCode() == KeyEvent.VK_C) && (!ke.isControlDown()) && (!ke.isMetaDown()))
                         || ((ke.getKeyCode() == KeyEvent.VK_5) && (ke.isControlDown()))) {
-                    AxoObjectInstanceAbstract ao = AddObjectInstance(MainFrame.mainframe.axoObjects.GetAxoObjectFromName(patchComment, null).get(0), Layers.getMousePosition());
+                    AxoObjectInstanceAbstract ao = AddObjectInstance(MainFrame.axoObjects.GetAxoObjectFromName(patchComment, null).get(0), Layers.getMousePosition());
                     ao.addInstanceNameEditor();
                     ke.consume();
                 } else if ((ke.getKeyCode() == KeyEvent.VK_I) && (!ke.isControlDown()) && (!ke.isMetaDown())) {
@@ -430,12 +431,15 @@ public class PatchGUI extends Patch {
                 Transferable t = dtde.getTransferable();
                 try {
                     String s = (String) t.getTransferData(DataFlavor.stringFlavor);
-                    OutletInstance ol;
-                    InletInstance il;
-                    if ((ol = getOutletByReference(s)) != null) {
-                        disconnect(ol);
-                    } else if ((il = getInletByReference(s)) != null) {
-                        disconnect(il);
+                    String ss[] = s.split("::");
+                    if (ss.length == 2) {
+                        OutletInstance ol;
+                        InletInstance il;
+                        if ((ol = getOutletByReference(ss[0], ss[1])) != null) {
+                            disconnect(ol);
+                        } else if ((il = getInletByReference(ss[0], ss[1])) != null) {
+                            disconnect(il);
+                        }
                     }
                     /*
                      AxoObjectAbstract obj = MainFrame.axoObjects.GetAxoObject(s);
@@ -463,13 +467,14 @@ public class PatchGUI extends Patch {
         Layers.setPreferredSize(new Dimension(5000, 5000));
     }
 
-    void paste(String v, boolean restoreConnectionsToExternalOutlets) {
+    void paste(String v, Point pos, boolean restoreConnectionsToExternalOutlets) {
         SelectNone();
         Serializer serializer = new Persister();
         try {
             PatchGUI p = serializer.read(PatchGUI.class, v);
             HashMap<String, String> dict = new HashMap<String, String>();
             for (AxoObjectInstanceAbstract o : p.objectinstances) {
+                o.patch = this;
                 AxoObjectAbstract obj = o.resolveType();
                 Modulator[] m = obj.getModulators();
                 if (m != null) {
@@ -483,46 +488,63 @@ public class PatchGUI extends Patch {
                 }
 
             }
+            int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE;
             for (AxoObjectInstanceAbstract o : p.objectinstances) {
                 String original_name = o.getInstanceName();
-                String new_name = original_name;
-                String ss[] = new_name.split("_");
-                boolean hasNumeralSuffix = false;
-                try {
-                    if ((ss.length > 1) && (Integer.toString(Integer.parseInt(ss[ss.length - 1]))).equals(ss[ss.length - 1])) {
-                        hasNumeralSuffix = true;
+                if (original_name != null) {
+                    String new_name = original_name;
+                    String ss[] = new_name.split("_");
+                    boolean hasNumeralSuffix = false;
+                    try {
+                        if ((ss.length > 1) && (Integer.toString(Integer.parseInt(ss[ss.length - 1]))).equals(ss[ss.length - 1])) {
+                            hasNumeralSuffix = true;
+                        }
+                    } catch (NumberFormatException e) {
                     }
-                } catch (NumberFormatException e) {
+                    if (hasNumeralSuffix) {
+                        int n = Integer.parseInt(ss[ss.length - 1]) + 1;
+                        String bs = original_name.substring(0, original_name.length() - ss[ss.length - 1].length());
+                        while (GetObjectInstance(new_name) != null) {
+                            new_name = bs + n++;
+                        }
+                        while (dict.containsKey(new_name)) {
+                            new_name = bs + n++;
+                        }
+                    } else {
+                        while (GetObjectInstance(new_name) != null) {
+                            new_name = new_name + "_";
+                        }
+                        while (dict.containsKey(new_name)) {
+                            new_name = new_name + "_";
+                        }
+                    }
+                    if (!new_name.equals(original_name)) {
+                        o.setInstanceName(new_name);
+                    }
+                    dict.put(original_name, new_name);
                 }
-                if (hasNumeralSuffix) {
-                    int n = Integer.parseInt(ss[ss.length - 1]) + 1;
-                    String bs = original_name.substring(0, original_name.length() - ss[ss.length - 1].length());
-                    while (GetObjectInstance(new_name) != null) {
-                        new_name = bs + n++;
-                    }
-                    while (dict.containsKey(new_name)) {
-                        new_name = bs + n++;
-                    }
-                } else {
-                    while (GetObjectInstance(new_name) != null) {
-                        new_name = new_name + "_";
-                    }
-                    while (dict.containsKey(new_name)) {
-                        new_name = new_name + "_";
-                    }
+                if (o.getX() < minX) {
+                    minX = o.getX();
                 }
-                if (!new_name.equals(original_name)) {
-                    o.setInstanceName(new_name);
+                if (o.getY() < minY) {
+                    minY = o.getY();
                 }
-                dict.put(original_name, new_name);
-                while (getObjectAtLocation(o.getX(), o.getY()) != null) {
-                    o.setLocation(o.getX() + Constants.xgrid, o.getY() + Constants.ygrid);
-                }
-
                 o.patch = this;
                 objectinstances.add(o);
                 ObjectLayer.add(o, 0);
                 o.PostConstructor();
+                int newposx = o.getX();
+                int newposy = o.getY();
+                if (pos != null) {
+                    // paste at cursor position, with delta snapped to grid
+                    newposx += Constants.xgrid * ((pos.x - minX + Constants.xgrid / 2) / Constants.xgrid);
+                    newposy += Constants.ygrid * ((pos.y - minY + Constants.ygrid / 2) / Constants.ygrid);
+                }
+                while (getObjectAtLocation(newposx, newposy) != null) {
+                    newposx += Constants.xgrid;
+                    newposy += Constants.ygrid;
+                }
+                o.setLocation(newposx, newposy);
                 o.SetSelected(true);
             }
             for (Net n : p.nets) {
@@ -531,16 +553,15 @@ public class PatchGUI extends Patch {
                 if (n.source != null) {
                     ArrayList<OutletInstance> source2 = new ArrayList<OutletInstance>();
                     for (OutletInstance o : n.source) {
-                        //String r[] = o.name.split(" ");
-                        int sepIndex = o.name.lastIndexOf(' ');
-                        String objname = o.name.substring(0, sepIndex);
-                        String outletname = o.name.substring(sepIndex + 1);
-                        if ((objname.length() > 0) && (outletname.length() > 0)) {
+                        String objname = o.getObjname();
+                        String outletname = o.getOutletname();
+                        if ((objname != null) && (outletname != null)) {
                             String on2 = dict.get(objname);
                             if (on2 != null) {
 //                                o.name = on2 + " " + r[1];
                                 OutletInstance i = new OutletInstance();
-                                i.name = on2 + " " + outletname;
+                                i.outletname = outletname;
+                                i.objname = on2;
                                 source2.add(i);
                             } else if (restoreConnectionsToExternalOutlets) {
                                 AxoObjectInstanceAbstract obj = GetObjectInstance(objname);
@@ -558,14 +579,14 @@ public class PatchGUI extends Patch {
                 if (n.dest != null) {
                     ArrayList<InletInstance> dest2 = new ArrayList<InletInstance>();
                     for (InletInstance o : n.dest) {
-                        int sepIndex = o.name.lastIndexOf(' ');
-                        String objname = o.name.substring(0, sepIndex);
-                        String inletname = o.name.substring(sepIndex + 1);
-                        if ((objname.length() > 0) && (inletname.length() > 0)) {
+                        String objname = o.getObjname();
+                        String inletname = o.getInletname();
+                        if ((objname != null) && (inletname != null)) {
                             String on2 = dict.get(objname);
                             if (on2 != null) {
                                 InletInstance i = new InletInstance();
-                                i.name = on2 + " " + inletname;
+                                i.inletname = inletname;
+                                i.objname = on2;
                                 dest2.add(i);
                             } else {/*
                                  AxoObjectInstanceAbstract obj = GetObjectInstance(r[0]);
@@ -589,20 +610,20 @@ public class PatchGUI extends Patch {
                         NetLayer.add(n);
                     } else if (connectedInlet != null) {
                         for (InletInstance o : n.dest) {
-                            InletInstance o2 = getInletByReference(o.name);
+                            InletInstance o2 = getInletByReference(o.getObjname(), o.getInletname());
                             if ((o2 != null) && (o2 != connectedInlet)) {
                                 AddConnection(connectedInlet, o2);
                             }
                         }
                         for (OutletInstance o : n.source) {
-                            OutletInstance o2 = getOutletByReference(o.name);
+                            OutletInstance o2 = getOutletByReference(o.getObjname(), o.getOutletname());
                             if (o2 != null) {
                                 AddConnection(connectedInlet, o2);
                             }
                         }
                     } else if (connectedOutlet != null) {
                         for (InletInstance o : n.dest) {
-                            InletInstance o2 = getInletByReference(o.name);
+                            InletInstance o2 = getInletByReference(o.getObjname(), o.getInletname());
                             if (o2 != null) {
                                 AddConnection(o2, connectedOutlet);
                             }
@@ -618,7 +639,7 @@ public class PatchGUI extends Patch {
             }
             AdjustSize();
         } catch (Exception ex) {
-            Logger.getLogger(AxoObjects.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(PatchGUI.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -932,10 +953,11 @@ public class PatchGUI extends Patch {
     }
 
     @Override
-    void save(File f) {
-        super.save(f);
+    boolean save(File f) {
+        boolean b = super.save(f);
         if (ObjEditor != null) {
             ObjEditor.UpdateObject();
         }
+        return b;
     }
 }

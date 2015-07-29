@@ -1,10 +1,6 @@
 <objdefs>
-<<<<<<< HEAD
-   <obj.normal id="clock" sha="2e1ff23ac85034ded776c411284443b01ea9cd80">
-=======
    <obj.normal id="clock" uuid="12b916e835bb6fc9fa4f2c858d1d1a72d5cf6d08" sha="b1a8f7267317fa583225dc218f285fe306220d1b">
       <upgradeSha>2e1ff23ac85034ded776c411284443b01ea9cd80</upgradeSha>
->>>>>>> JohannesTaelman/master
       <sDescription>Midi clock master, als outputs Midi clock, start, stop, and continue messages</sDescription>
       <author>Johannes Taelman</author>
       <license>BSD</license>
@@ -20,10 +16,7 @@
       </outlets>
       <displays/>
       <params>
-         <frac32.u.map name="bpm" noLabel="true">
-            <MinValue v="0.0"/>
-            <MaxValue v="63.5"/>
-         </frac32.u.map>
+         <frac32.u.map name="bpm" noLabel="true"/>
       </params>
       <attribs>
          <combo name="device">
@@ -35,17 +28,6 @@
                <string>usb host port 4</string>
                <string>internal port 1</string>
                <string>internal port 2</string>
-<<<<<<< HEAD
-            </MenuEntries>
-            <CEntries>
-               <string>1, 1</string>
-               <string>3, 1</string>
-               <string>3, 2</string>
-               <string>3, 3</string>
-               <string>3, 4</string>
-               <string>15, 1</string>
-               <string>15, 2</string>
-=======
                <string>usb device port 1</string>
             </MenuEntries>
             <CEntries>
@@ -57,7 +39,6 @@
                <string>MIDI_DEVICE_INTERNAL, 1</string>
                <string>MIDI_DEVICE_INTERNAL, 2</string>
                <string>MIDI_DEVICE_USB_DEVICE, 1</string>
->>>>>>> JohannesTaelman/master
             </CEntries>
          </combo>
       </attribs>
@@ -79,29 +60,17 @@ rstp = 0;]]></code.init>
 }
 if (inlet_run && !_active) {
   _active = 1;
-<<<<<<< HEAD
-  if (_pos24ppq)     MidiSend1((midi_device_t) %device%, MIDI_START);
-  else     MidiSend1((midi_device_t) %device%, MIDI_CONTINUE);
-} else if (!%run% && _active){
-  _active = 0;
-  MidiSend1((midi_device_t) %device%, MIDI_STOP);
-=======
   if (_pos24ppq)     MidiSend1((midi_device_t) attr_device, MIDI_START);
   else     MidiSend1((midi_device_t) attr_device, MIDI_CONTINUE);
 } else if (!inlet_run && _active){
   _active = 0;
   MidiSend1((midi_device_t) attr_device, MIDI_STOP);
->>>>>>> JohannesTaelman/master
 }if (_active) {
   _posfrac += param_bpm;
   if (_posfrac & 1<<31) {
     _posfrac &= (1<<31)-1;
     _pos24ppq++;
-<<<<<<< HEAD
-    MidiSend1((midi_device_t) %device%,MIDI_TIMING_CLOCK);
-=======
     MidiSend1((midi_device_t) attr_device,MIDI_TIMING_CLOCK);
->>>>>>> JohannesTaelman/master
   }
 }
 outlet_pos4ppq = _pos24ppq/6;

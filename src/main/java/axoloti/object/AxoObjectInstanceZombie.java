@@ -76,11 +76,11 @@ public class AxoObjectInstanceZombie extends AxoObjectInstanceAbstract {
         Titlebar.add(idlbl);
 
         Titlebar.setToolTipText("<html>" + "Unresolved object!");
-        MenuItem popm_substitute = new MenuItem("substitute");
+        MenuItem popm_substitute = new MenuItem("replace");
         popm_substitute.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                ((PatchGUI) patch).ShowClassSelector(AxoObjectInstanceZombie.this.getLocation(), null,null);
+                ((PatchGUI) patch).ShowClassSelector(AxoObjectInstanceZombie.this.getLocation(), AxoObjectInstanceZombie.this, null);
             }
         });
         popup.add(popm_substitute);
@@ -146,7 +146,7 @@ public class AxoObjectInstanceZombie extends AxoObjectInstanceAbstract {
     public InletInstance GetInletInstance(String n) {
         if (inletInstances != null) {
             for (InletInstance i : inletInstances) {
-                if (i.name.equals(n)) {
+                if (i.GetLabel().equals(n)) {
                     return i;
                 }
             }
@@ -162,7 +162,7 @@ public class AxoObjectInstanceZombie extends AxoObjectInstanceAbstract {
     public OutletInstance GetOutletInstance(String n) {
         if (outletInstances != null) {
             for (OutletInstance i : outletInstances) {
-                if (n.equals(i.name)) {
+                if (n.equals(i.GetLabel())) {
                     return i;
                 }
             }

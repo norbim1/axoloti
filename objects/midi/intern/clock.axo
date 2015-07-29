@@ -1,10 +1,6 @@
 <objdefs>
-<<<<<<< HEAD
-   <obj.normal id="clock" sha="5686480d6bc46933eac28025298c8d288de90db8">
-=======
    <obj.normal id="clock" uuid="7f6f35e92d2c29e950af2b3af5cebb2e9e3b778c" sha="e288c8fe1409469b1d92d9309b18db3430e1ecd4">
       <upgradeSha>5686480d6bc46933eac28025298c8d288de90db8</upgradeSha>
->>>>>>> JohannesTaelman/master
       <sDescription>Midi clock master, als outputs Midi clock, start, stop, and continue messages. Sends to midi/in/* objects only.</sDescription>
       <author>Johannes Taelman</author>
       <license>BSD</license>
@@ -19,10 +15,7 @@
       </outlets>
       <displays/>
       <params>
-         <frac32.u.map name="bpm" noLabel="true">
-            <MinValue v="0.0"/>
-            <MaxValue v="63.5"/>
-         </frac32.u.map>
+         <frac32.u.map name="bpm" noLabel="true"/>
       </params>
       <attribs/>
       <code.declaration><![CDATA[bool _active;
@@ -45,11 +38,7 @@ if (inlet_run && !_active) {
   _active = 1;
   if (_pos24ppq)     PatchMidiInHandler(MIDI_DEVICE_INTERNAL, 0,MIDI_START,0,0);
   else     PatchMidiInHandler(MIDI_DEVICE_INTERNAL, 0,MIDI_CONTINUE,0,0);
-<<<<<<< HEAD
-} else if (!%run% && _active){
-=======
 } else if (!inlet_run && _active){
->>>>>>> JohannesTaelman/master
   _active = 0;
   PatchMidiInHandler(MIDI_DEVICE_INTERNAL, 0,MIDI_STOP,0,0);
 }if (_active) {

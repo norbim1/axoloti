@@ -78,7 +78,7 @@
 
   <target name="-post-init">
 	<antcall target="create.build.version"/>
-  </target>
+  </target>  
   <!-- Overrides -do-jar-->
   <target name="-do-jar">
 
@@ -128,12 +128,30 @@
 		<exec dir="." executable="cp" os="Mac OS X">
 			<arg line="-R platform_osx build/runtime/tmp/axoloti_runtime"/>
 		</exec>
+		<exec dir="." executable="rm" os="Mac OS X">
+			<arg line="-rf build/runtime/tmp/axoloti_runtime/share"/>
+		</exec>
+		<exec dir="." executable="rm" os="Mac OS X">
+			<arg line="-rf build/runtime/tmp/axoloti_runtime/src"/>
+		</exec>
+		<exec dir="." executable="rm" os="Mac OS X">
+			<arg line="-rf build/runtime/tmp/axoloti_runtime/arm_none-eabi/lib/arm6-m build/runtime/tmp/axoloti_runtime/arm_none-eabi/lib/arm7-ar build/runtime/tmp/axoloti_runtime/arm_none-eabi/lib/armt7-m "/>
+		</exec>
 		<exec dir="." executable="hdiutil" os="Mac OS X">
-			<arg line="create -megabytes 400 build/runtime/macosx/axoloti_runtime.dmg -volname 'Axoloti Runtime'  -srcfolder build/runtime/tmp" />
+			<arg line="create -megabytes 512 build/runtime/macosx/axoloti_runtime.dmg -volname 'Axoloti Runtime' -srcfolder build/runtime/tmp" />
 		</exec>
 		<!--Linux -->
 		<exec dir="." executable="cp" os="Linux">
 			<arg line="-R platform_linux build/runtime/tmp/axoloti_runtime"/>
+		</exec>
+		<exec dir="." executable="rm" os="Linux">
+			<arg line="-rf build/runtime/tmp/axoloti_runtime/share"/>
+		</exec>
+		<exec dir="." executable="rm" os="Linux">
+			<arg line="-rf build/runtime/tmp/axoloti_runtime/src"/>
+		</exec>
+		<exec dir="." executable="rm" os="Linux">
+			<arg line="-rf build/runtime/tmp/axoloti_runtime/arm_none-eabi/lib/arm6-m build/runtime/tmp/axoloti_runtime/arm_none-eabi/lib/arm7-ar build/runtime/tmp/axoloti_runtime/arm_none-eabi/lib/armt7-m "/>
 		</exec>
 		<mkdir dir="build/runtime/linux"/>
 		<exec dir="build/runtime/tmp" executable="tar" os="Linux">
@@ -172,10 +190,15 @@
 			 <include name="patches/**/*"/>
 			 <include name="objects/**/*"/>
 			 <include name="firmware/**/*"/>
-			 <include name="chibios/**/*"/>
+			 <include name="chibios/*"/>
+			 <include name="chibios/boards/ST_STM32F4_DISCOVERY/*"/>
+			 <include name="chibios/ext/**/*"/>
+			 <include name="chibios/os/**/*"/>
+			 <include name="chibios/docs/**/*"/>
 			 <include name="CMSIS/**/*"/>
 			 <include name="patch/**/*"/>
 			 <include name="*.txt"/>
+			 <include name="public_key.der"/>
 		 </fx:fileset>
 	</fx:resources>
 
@@ -240,15 +263,11 @@
 
   </target>
 
-	<target name="create.build.version">
-		<exec executable="git" outputproperty="build.version">
-			<arg line = "describe --long --tags --dirty --always" />
-		</exec>
-		<echo output="src/main/java/axoloti/Version.java" >package axoloti;</echo>
-		<echo output="src/main/java/axoloti/Version.java" append="true">public class Version {</echo>
-		<echo output="src/main/java/axoloti/Version.java" append="true">public final static String AXOLOTI_VERSION ="${build.version}";</echo>
-		<echo output="src/main/java/axoloti/Version.java" append="true">};</echo>
-	</target>
-
+    <target name="create.build.version">
+        <echo output="src/main/java/axoloti/Version.java" >package axoloti;</echo>
+        <echo output="src/main/java/axoloti/Version.java" append="true">public class Version {</echo>
+        <echo output="src/main/java/axoloti/Version.java" append="true">public final static String AXOLOTI_VERSION ="1.0.0";</echo>
+        <echo output="src/main/java/axoloti/Version.java" append="true">};</echo>
+    </target>
       
 </project>

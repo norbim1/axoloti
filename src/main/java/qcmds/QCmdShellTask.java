@@ -54,9 +54,9 @@ public abstract class QCmdShellTask implements QCmd {
                 line = br.readLine();
                 while (line != null) {
                     if (line.contains("error")) {
-                        Logger.getLogger(QCmdCompilePatch.class.getName()).severe(line);
+                        Logger.getLogger(QCmdCompilePatch.class.getName()).log(Level.SEVERE, "{0}",line);
                     } else {
-                        Logger.getLogger(QCmdCompilePatch.class.getName()).info(line);
+                        Logger.getLogger(QCmdCompilePatch.class.getName()).log(Level.INFO, "{0}",line);
                     }
                     line = br.readLine();
                 }
@@ -66,6 +66,10 @@ public abstract class QCmdShellTask implements QCmd {
         }
     }
 
+    public boolean success() {
+        return success;
+    }
+    
     public String RuntimeDir() {
         return System.getProperty(axoloti.Axoloti.RUNTIME_DIR);
     }
@@ -113,7 +117,7 @@ public abstract class QCmdShellTask implements QCmd {
             if (p1.exitValue() == 0) {
                 success = true;
             } else {
-                Logger.getLogger(QCmdCompilePatch.class.getName()).log(Level.SEVERE, "shell task failed, exit value: " + p1.exitValue());
+                Logger.getLogger(QCmdCompilePatch.class.getName()).log(Level.SEVERE, "shell task failed, exit value: {0}", p1.exitValue());
                 success = false;
                 return err();
             }

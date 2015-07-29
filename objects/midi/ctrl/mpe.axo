@@ -1,6 +1,6 @@
 <objdefs>
-   <obj.normal id="mpe" uuid="94323477e6476a10b9332922e5dfcd2705641af1" sha="7d045bd3ec2368f42f90d2a142e3100fa2cf23c1">
-      <upgradeSha>df6476c993ae8899573dbd0c881e717e5eec19ea</upgradeSha>
+   <obj.normal id="mpe" uuid="94323477e6476a10b9332922e5dfcd2705641af1" sha="f897a9eb2f105dc7affd4af77664b52866c85d36">
+      <upgradeSha>3bfe643daf126a01a52ec457bad48ce9e408235c</upgradeSha>
       <sDescription>Controller input for MIDI Polyphonic Rxpression</sDescription>
       <author>Mark Harris</author>
       <license>BSD</license>
@@ -61,24 +61,16 @@ if ((status == MIDI_NOTE_ON + attr_midichannel) && (data2)) {
   _gate = 1<<27;
   _gate2 = 0;
   _pitch = (_note << 21) + ((_bend >> 6)* _bendRange );
-<<<<<<< HEAD:objects/midi/mpe/keyb mpe.axo
-} else if (((status == MIDI_NOTE_ON + %midichannel%) && (!data2))||
-          (status == MIDI_NOTE_OFF + %midichannel%)) {
-=======
 } else if (((status == MIDI_NOTE_ON + attr_midichannel) && (!data2))||
           (status == MIDI_NOTE_OFF + attr_midichannel)) {
->>>>>>> JohannesTaelman/master:objects/midi/ctrl/mpe.axo
   if (_note == data1-64) {
     _rvelo = data2<<20;
     _gate = 0;
+    _pressure = 0;
   }
 } else if (status == attr_midichannel + MIDI_CHANNEL_PRESSURE) {
   _pressure = data1<<20;
-<<<<<<< HEAD:objects/midi/mpe/keyb mpe.axo
-} else if (status == %midichannel% + MIDI_PITCH_BEND) {
-=======
 } else if (status == attr_midichannel + MIDI_PITCH_BEND) {
->>>>>>> JohannesTaelman/master:objects/midi/ctrl/mpe.axo
   _bend = ((int)((data2<<7)+data1)-0x2000)<<14;
   _pitch = (_note << 21) + ((_bend >> 6)* _bendRange );
 } else if (status == attr_midichannel + MIDI_CONTROL_CHANGE) {

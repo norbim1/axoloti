@@ -24,6 +24,8 @@
 #include "codec_CS43L22.h"
 #elif (BOARD_STM32F4DISCOVERY_1)
 #include "codec_UDA1380.h"
+#elif (BOARD_AXOLOTI_V05)
+#include "codec_ADAU1961.h"
 #elif (BOARD_AXOLOTI_V03)
 #include "codec_ADAU1961.h"
 #elif (BOARD_AXOLOTI_V01)
