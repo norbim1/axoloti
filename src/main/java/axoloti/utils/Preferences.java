@@ -248,6 +248,6 @@ public class Preferences {
 
     public void SetRuntimeDir(String dir) {
         RuntimeDir = dir;
-        System.setProperty(axoloti.Axoloti.FIRMWARE_DIR, dir);
+        System.setProperty(axoloti.Axoloti.RUNTIME_DIR, dir);
     }
 }

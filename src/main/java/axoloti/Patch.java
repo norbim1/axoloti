@@ -1136,6 +1136,10 @@ public void ShowCompileFail() {
                 + "    patchMeta.fptr_dsp_process = 0;\n"
                 + "    return;"
                 + "  }\n"
+                + "  extern uint32_t _pbss_start;\n"
+                + "  extern uint32_t _pbss_end;\n"
+                + "  volatile uint32_t *p;\n"
+                + "  for(p=&_pbss_start;p<&_pbss_end;p++) *p++=0;\n"
                 + "  patchMeta.npresets = " + settings.GetNPresets() + ";\n"
                 + "  patchMeta.npreset_entries = " + settings.GetNPresetEntries() + ";\n"
                 + "  patchMeta.pPresets = (PresetParamChange_t*) root.GetPresets();\n"
@@ -1166,10 +1170,8 @@ public void ShowCompileFail() {
     String GenerateCode3() {
         CreateIID();
         SortByPosition();
-        String c = "extern \"C\" { \n"
-                + "#include \"../" + Constants.firmwaredir + "/patch.h\"\n"
-                + "#include \"../" + Constants.firmwaredir + "/axoloti.h\"\n"
-                + "#include \"../" + Constants.firmwaredir + "/parameter_functions.h\"\n";
+        String firmwaredir = System.getProperty(Axoloti.FIRMWARE_DIR);
+        String c = "extern \"C\" { \n";
         c += generateIncludes();
         c += "}\n"
                 + "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n"
