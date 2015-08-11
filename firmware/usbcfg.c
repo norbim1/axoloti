@@ -36,7 +36,7 @@ static const uint8_t vcom_device_descriptor_data[18] = {
                          0x02,          /* bDeviceSubClass.                 */
                          0x01,          /* bDeviceProtocol. (IAD)           */
                          0x40,          /* bMaxPacketSize.                  */
-                         0x16C0,        /* idVendor (Voti).                   */
+                         0x16C0,        /* idVendor (Voti).                 */
                          0x0442,        /* idProduct.                       */
                          0x0200,        /* bcdDevice.                       */
                          1,             /* iManufacturer.                   */
@@ -213,27 +213,6 @@ static const uint8_t vcom_string6[] = {
 };
 
 
-/*
- * Device Description string.
- */
-static const uint8_t vcom_string7[] = {
-  USB_DESC_BYTE(20),                    /* bLength.                         */
-  USB_DESC_BYTE(USB_DESCRIPTOR_STRING), /* bDescriptorType.                 */
-  'A', 0, 'x', 0, 'D', 0, 'u', 0, 'm', 0, 'm', 0, 'y', 0, '7', 0,
-  ' ', 0
-};
-
-
-/*
- * Device Description string.
- */
-static const uint8_t vcom_string8[] = {
-  USB_DESC_BYTE(20),                    /* bLength.                         */
-  USB_DESC_BYTE(USB_DESCRIPTOR_STRING), /* bDescriptorType.                 */
-  'A', 0, 'x', 0, 'D', 0, 'u', 0, 'm', 0, 'm', 0, 'y', 0, '8', 0,
-  ' ', 0
-};
-
 
 /* WCID implementation reference:
  *  https://github.com/pbatard/libwdi/wiki/WCID-Devices
@@ -255,9 +234,7 @@ static const USBDescriptor vcom_strings[] = {
   {sizeof vcom_string3, vcom_string3},
   {sizeof vcom_string4, vcom_string4},
   {sizeof vcom_string5, vcom_string5},
-  {sizeof vcom_string5, vcom_string6},
-  {sizeof vcom_string5, vcom_string7},
-  {sizeof vcom_string5, vcom_string8}
+  {sizeof vcom_string6, vcom_string6}
 };
 
 static const USBDescriptor vcid_descriptor = {sizeof vcid_string, vcid_string};
@@ -393,16 +370,56 @@ static void usb_event(USBDriver *usbp, usbevent_t event) {
 }
 
 static const uint8_t mscompatid[] = {
-0x28, 0x00, 0x00, 0x00,  /* DWORD (LE)  Descriptor length (40 bytes) */
+0x40, 0x00, 0x00, 0x00,  /* DWORD (LE)  Descriptor length (64 bytes) */
 0x00, 0x01,  /* BCD WORD (LE)   Version ('1.0') */
 0x04, 0x00,  /* WORD (LE)   Compatibility ID Descriptor index (0x0004) */
-0x01,    /* BYTE    Number of sections (1) */
+0x02,    /* BYTE    Number of sections (2) */
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,    /* 7 BYTES     Reserved */
+0x00,    /* BYTE    Interface Number (Interface #0) */
+0x01,    /* BYTE    Reserved */
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  /* 8 BYTES (NUL-terminated?) ASCII String    Compatible ID (null) */
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  /* 8 BYTES (NUL-terminated?) ASCII String    Sub-Compatible ID (unused) */
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  /* 6 BYTES      Reserved */
 0x02,    /* BYTE    Interface Number (Interface #2) */
 0x01,    /* BYTE    Reserved */
 0x57, 0x49, 0x4E, 0x55, 0x53, 0x42, 0x00, 0x00,  /* 8 BYTES (NUL-terminated?) ASCII String    Compatible ID ("WINUSB\0\0") */
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  /* 8 BYTES (NUL-terminated?) ASCII String    Sub-Compatible ID (unused) */
-0x00, 0x00, 0x00, 0x00, 0x00, 0x00  /* 6 BYTES      Reserved */
+0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  /* 6 BYTES      Reserved */
+};
+
+
+static const uint8_t msdescriptor0[] = {
+0x0A, 0x00, 0x00, 0x00,  /* Descriptor length (10 bytes) */
+0x00, 0x01,  /*Version ('1.0') */
+0x05, 0x00, /*  WORD (LE)   Descriptor index (5) */
+0x00, 0x00  /*  WORD (LE)   Number of sections (0) */
+};
+
+static const uint8_t msdescriptor1[] = {
+0x94, 0x00, 0x00, 0x00,  /* Descriptor length (146 bytes) */
+0x00, 0x01,  /*Version ('1.0') */
+0x05, 0x00, /*  WORD (LE)   Descriptor index (5) */
+0x01, 0x00, /*  WORD (LE)   Number of sections (1) */
+0x8A, 0x00, 0x00, 0x00,  /* DWORD (LE)  Size of the property section (136 bytes) */
+0x07, 0x00, 0x00, 0x00,  /* DWORD (LE)  Property data type (7 = Unicode REG_MULTI_SZ, */
+0x2a, 0x00, /*  WORD (LE)   Property name length (42 bytes) */
+0x44, 0x00, 0x65, 0x00, 0x76, 0x00, 0x69, 0x00,
+0x63, 0x00, 0x65, 0x00, 0x49, 0x00, 0x6E, 0x00,
+0x74, 0x00, 0x65, 0x00, 0x72, 0x00, 0x66, 0x00,
+0x61, 0x00, 0x63, 0x00, 0x65, 0x00, 0x47, 0x00,
+0x55, 0x00, 0x49, 0x00, 0x44, 0x00, 0x73, 0x00, 0x00, 0x00, /* NUL-terminated Unicode String (LE) Property name "DeviceInterfaceGUIDs" */
+0x50, 0x00, 0x00, 0x00,  /* DWORD (LE)  Property data length (80 bytes) */
+0x7B, 0x00, 0x38, 0x00, 0x38, 0x00, 0x42, 0x00,
+0x41, 0x00, 0x45, 0x00, 0x30, 0x00, 0x33, 0x00,
+0x32, 0x00, 0x2D, 0x00, 0x35, 0x00, 0x41, 0x00,
+0x38, 0x00, 0x31, 0x00, 0x2D, 0x00, 0x34, 0x00,
+0x39, 0x00, 0x66, 0x00, 0x30, 0x00, 0x2D, 0x00,
+0x42, 0x00, 0x43, 0x00, 0x33, 0x00, 0x44, 0x00,
+0x2D, 0x00, 0x41, 0x00, 0x34, 0x00, 0x46, 0x00,
+0x46, 0x00, 0x31, 0x00, 0x33, 0x00, 0x38, 0x00,
+0x32, 0x00, 0x31, 0x00, 0x36, 0x00, 0x44, 0x00,
+0x36, 0x00, 0x7D, 0x00, 0x00, 0x00, 0x00, 0x00
+/* double NUL-terminated Unicode String (LE) Property name "{88BAE032-5A81-49f0-BC3D-A4FF138216D6}" */
 };
 
 static bool_t specialRequestsHook(USBDriver *usbp) {
@@ -414,6 +431,24 @@ static bool_t specialRequestsHook(USBDriver *usbp) {
       (usbp->setup[4] == 0x04)
     ) {
     usbSetupTransfer(usbp, (uint8_t *)&mscompatid, usbp->setup[6], NULL);
+    return TRUE;
+  } else   if (
+      (usbp->setup[0] == 0xC1) &&
+      (usbp->setup[1] == 0x14) &&
+      (usbp->setup[2] == 0x00) &&
+      (usbp->setup[3] == 0x00) &&
+      (usbp->setup[4] == 0x05)
+    ) {
+    usbSetupTransfer(usbp, (uint8_t *)&msdescriptor0, usbp->setup[6], NULL);
+    return TRUE;
+  } else   if (
+      (usbp->setup[0] == 0xC1) &&
+      (usbp->setup[1] == 0x14) &&
+      (usbp->setup[2] == 0x02) &&
+      (usbp->setup[3] == 0x00) &&
+      (usbp->setup[4] == 0x05)
+    ) {
+    usbSetupTransfer(usbp, (uint8_t *)&msdescriptor1, usbp->setup[6], NULL);
     return TRUE;
   }
 

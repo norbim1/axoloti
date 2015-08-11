@@ -314,9 +314,9 @@ public class USBBulkConnection extends Connection {
             ByteBuffer signature = q.getResult();
             boolean signaturevalid = false;
             if (signature == null) {
-                Logger.getLogger(USBBulkConnection.class.getName()).log(Level.INFO, "Can't obtain signature, upgrade firmware?");
+                Logger.getLogger(USBBulkConnection.class.getName()).log(Level.INFO, "Cannot obtain signature, upgrade firmware?");
             } else if ((signature.getInt(0) == 0xFFFFFFFF) && (signature.getInt(1) == 0xFFFFFFFF)) {
-                Logger.getLogger(USBBulkConnection.class.getName()).log(Level.INFO, "Can't validate authenticity, no signature present.");
+                Logger.getLogger(USBBulkConnection.class.getName()).log(Level.INFO, "Cannot validate authenticity, no signature present.");
             } else {
                 signaturevalid = HWSignature.Verify(targetProfile.getCPUSerial(), otpInfo, bb2ba(signature));
                 if (signaturevalid) {
@@ -1231,8 +1231,10 @@ public class USBBulkConnection extends Connection {
                         break;
                     case 11:
                         patchentrypoint += (cc & 0xFF);
-                        Logger.getLogger(USBBulkConnection.class.getName()).info(String.format("Firmware version: %d.%d.%d.%d, crc=0x%08X, entrypoint=0x%08X",
-                                fwversion[0], fwversion[1], fwversion[2], fwversion[3], fwcrc, patchentrypoint));
+                        String sFwcrc = String.format("%08X",fwcrc);
+                        Logger.getLogger(USBBulkConnection.class.getName()).info(String.format("Firmware version: %d.%d.%d.%d, crc=0x%s, entrypoint=0x%08X",
+                                fwversion[0], fwversion[1], fwversion[2], fwversion[3], sFwcrc, patchentrypoint));
+                        MainFrame.mainframe.setFirmwareID(sFwcrc);
                         GoIdleState();
                         break;
                 }

@@ -60,7 +60,7 @@ fi
 
 if [ ! -f "$PLATFORM_ROOT/bin/arm-none-eabi-gcc" ];
 then
-    cd "${PLATFORM_ROOT}"
+    cd "${PLATFORM_ROOT}/src"
     ARCHIVE=gcc-arm-none-eabi-4_9-2015q2-20150609-linux.tar.bz2
     if [ ! -f ${ARCHIVE} ];
     then
@@ -70,7 +70,7 @@ then
         echo "${ARCHIVE} already downloaded"
     fi
     tar xfj ${ARCHIVE}
-    cp -rv gcc-arm-none-eabi-4_9-2015q2/* .
+    cp -rv gcc-arm-none-eabi-4_9-2015q2/* ..
     rm -r gcc-arm-none-eabi-4_9-2015q2
 else
     echo "bin/arm-none-eabi-gcc already present, skipping..."
@@ -130,13 +130,14 @@ fi
 
 sudo apt-get install openjdk-7-jdk
 
+echo "##### compiling firmware... #####"
+cd "${PLATFORM_ROOT}"
+./compile_firmware.sh
+
 echo "##### building GUI... #####"
 cd "${PLATFORM_ROOT}"/..
 ant
 
-echo "##### compiling firmware... #####"
-cd "${PLATFORM_ROOT}"
-./compile_firmware.sh
 
 echo "DONE"
 

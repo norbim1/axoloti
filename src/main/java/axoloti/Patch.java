@@ -1122,13 +1122,28 @@ public void ShowCompileFail() {
                 + "   root.ApplyPreset(i);\n"
                 + "}\n\n";
 
-        c += "void PatchDispose( ) {\n"
-                + "  root.Dispose();\n"
-                + "}\n\n";
-
         c += "void PatchMidiInHandler(midi_device_t dev, uint8_t port, uint8_t status, uint8_t data1, uint8_t data2){\n"
                 + "  root.MidiInHandler(dev, port, status, data1, data2);\n"
                 + "}\n\n";
+
+        c += "typedef void (*funcp_t)(void);\n"
+                + "typedef funcp_t * funcpp_t;\n"
+                + "extern funcp_t __ctor_array_start;\n"
+                + "extern funcp_t __ctor_array_end;"
+                + "extern funcp_t __dtor_array_start;\n"
+                + "extern funcp_t __dtor_array_end;";
+
+        c += "void PatchDispose( ) {\n"
+                + "  root.Dispose();\n"
+                + "  {\n"
+                + "    funcpp_t fpp = &__dtor_array_start;\n"
+                + "    while (fpp < &__dtor_array_end) {\n"
+                + "      (*fpp)();\n"
+                + "      fpp++;\n"
+                + "    }\n"
+                + "  }\n"
+                + "}\n\n";
+
 
         c += "void xpatch_init2(int fwid)\n"
                 + "{\n"
@@ -1140,6 +1155,13 @@ public void ShowCompileFail() {
                 + "  extern uint32_t _pbss_end;\n"
                 + "  volatile uint32_t *p;\n"
                 + "  for(p=&_pbss_start;p<&_pbss_end;p++) *p++=0;\n"
+                + "  {\n"
+                + "    funcpp_t fpp = &__ctor_array_start;\n"
+                + "    while (fpp < &__ctor_array_end) {\n"
+                + "      (*fpp)();\n"
+                + "      fpp++;\n"
+                + "    }\n"
+                + "  }\n"
                 + "  patchMeta.npresets = " + settings.GetNPresets() + ";\n"
                 + "  patchMeta.npreset_entries = " + settings.GetNPresetEntries() + ";\n"
                 + "  patchMeta.pPresets = (PresetParamChange_t*) root.GetPresets();\n"

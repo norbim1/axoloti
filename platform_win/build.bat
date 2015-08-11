@@ -21,14 +21,13 @@ if not exist %MINGWGET% (
 
 set PATH=%PATH%;%MINGW%\msys\1.0\bin;%MINGW%\bin
 set HOME=.
-%MINGW%\msys\1.0\bin\bash.exe get_dependencies.sh
+%MINGW%\msys\1.0\bin\bash.exe build.sh
 
-pause
-build_gui.bat
+call build_gui.bat
+call compile_firmware.bat
 
 echo READY
 echo Launch Axoloti by double clicking Axoloti\axoloti.bat
-echo then go to board->firmware->compile
 echo then flash the firmware
 
 :end

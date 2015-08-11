@@ -76,8 +76,7 @@
   <!-- run the ant timestamp task -->
   <tstamp/>
 
-  <target name="-post-init">
-	<antcall target="create.build.version"/>
+  <target name="-post-init" depends="create.build.version">
   </target>  
   <!-- Overrides -do-jar-->
   <target name="-do-jar">
@@ -114,12 +113,10 @@
     </jar>
   </target>
 
-  <target name="-post-jar">
-	<antcall target="bundle"/>
-	<antcall target="runtime"/>
+  <target name="-post-jar" depends="bundle, runtime">
   </target>
 
-  <target name="runtime" if="build.runtime">
+  <target name="runtime" if="build.runtime" depends="calc.short.version">
 		<exec dir="." executable="rm" >
 			<arg line="-rf build/runtime/"/>
 		</exec>
@@ -140,8 +137,11 @@
 		<exec dir="." executable="rm" os="Mac OS X">
 			<arg line="-rf build/runtime/tmp/axoloti_runtime/platform_osx/arm-none-eabi/lib/armv6-m build/runtime/tmp/axoloti_runtime/platform_osx/arm-none-eabi/lib/armv7-ar build/runtime/tmp/axoloti_runtime/platform_osx/arm-none-eabi/lib/armv7-m "/>
 		</exec>
+		<exec dir="." executable="rm" os="Mac OS X">
+			<arg line="-rf build/runtime/tmp/axoloti_runtime/platform_osx/lib/gcc/arm-none-eabi/4.9.3/armv6-m build/runtime/tmp/axoloti_runtime/platform_osx/lib/gcc/arm-none-eabi/4.9.3/armv7-ar build/runtime/tmp/axoloti_runtime/platform_osx/lib/gcc/arm-none-eabi/4.9.3/armv7-m "/>
+		</exec>
 		<exec dir="." executable="hdiutil" os="Mac OS X">
-			<arg line="create -megabytes 512 build/runtime/macosx/axoloti_runtime.dmg -volname 'Axoloti Runtime' -srcfolder build/runtime/tmp" />
+			<arg line="create -megabytes 512 build/runtime/macosx/axo_runtime_mac_${short.version}.dmg -volname 'Axoloti Runtime' -srcfolder build/runtime/tmp" />
 		</exec>
 		<!--Linux -->
 		<exec dir="." executable="cp" os="Linux">
@@ -156,16 +156,19 @@
 		<exec dir="." executable="rm" os="Linux">
 			<arg line="-rf build/runtime/tmp/axoloti_runtime/platform_linux/arm-none-eabi/lib/armv6-m build/runtime/tmp/axoloti_runtime/platform_linux/arm-none-eabi/lib/armv7-ar build/runtime/tmp/axoloti_runtime/platform_linux/arm-none-eabi/lib/armv7-m "/>
 		</exec>
+		<exec dir="." executable="rm" os="Linux">
+			<arg line="-rf build/runtime/tmp/axoloti_runtime/platform_linux/lib/gcc/arm-none-eabi/4.9.3/armv6-m build/runtime/tmp/axoloti_runtime/platform_linux/lib/gcc/arm-none-eabi/4.9.3/armv7-ar build/runtime/tmp/axoloti_runtime/platform_linux/lib/gcc/arm-none-eabi/4.9.3/armv7-m "/>
+		</exec>
 		<mkdir dir="build/runtime/linux"/>
 		<exec dir="build/runtime/tmp" executable="tar" os="Linux">
-			<arg value="-cvf"/>
-			<arg value="../linux/axoloti_runtime.tar"/>
+			<arg value="-zcvf"/>
+			<arg value="../linux/axo_runtime_linux_${short.version}.tgz"/>
 			<arg value="."/>
 		</exec>
 		<!--Windows -->
 		<mkdir dir="build/runtime/tmp_win/axoloti_runtime"/>
-		<exec dir="." executable="cp.exe" osfamily="Windows">
-			<arg line="-R platform_win/* build/runtime/tmp_win/axoloti_runtime"/>
+		<exec dir="." executable="cp" osfamily="Windows">
+			<arg line="-R platform_win build/runtime/tmp_win/axoloti_runtime"/>
 		</exec>
 		<exec dir="." executable="rm" osfamily="Windows">
 			<arg line="-rf build/runtime/tmp_win/axoloti_runtime/platform_win/share"/>
@@ -174,16 +177,70 @@
 			<arg line="-rf build/runtime/tmp_win/axoloti_runtime/platform_win/src"/>
 		</exec>
 		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-rf build/runtime/tmp_win/axoloti_runtime/platform_win/man"/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-f build/runtime/tmp_win/axoloti_runtime/platform_win/mrproper.bat"/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-rf build/runtime/tmp_win/axoloti_runtime/platform_win/apache-ant-1.9.4"/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-rf build/runtime/tmp_win/axoloti_runtime/platform_win/include"/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-rf build/runtime/tmp_win/axoloti_runtime/platform_win/contrib"/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-f build/runtime/tmp_win/axoloti_runtime/platform_win/build.bat"/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-f build/runtime/tmp_win/axoloti_runtime/platform_win/build.sh"/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-f build/runtime/tmp_win/axoloti_runtime/platform_win/build_gui.bat"/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-f build/runtime/tmp_win/axoloti_runtime/platform_win/build_dist.bat"/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-f build/runtime/tmp_win/axoloti_runtime/platform_win/build-libusb.sh"/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-f build/runtime/tmp_win/axoloti_runtime/platform_win/zadig.html"/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
 			<arg line="-rf build/runtime/tmp_win/axoloti_runtime/platform_win/arm-none-eabi/lib/armv6-m build/runtime/tmp_win/axoloti_runtime/platform_win/arm-none-eabi/tmp_win/armv7-ar build/runtime/tmp_win/axoloti_runtime/platform_win/arm-none-eabi/lib/armv7-m "/>
 		</exec>                
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-rf build/runtime/tmp_win/axoloti_runtime/platform_win/arm-none-eabi/lib/armv6-m build/runtime/tmp_win/axoloti_runtime/platform_win/arm-none-eabi/lib/armv7-ar build/runtime/tmp_win/axoloti_runtime/platform_win/arm-none-eabi/lib/armv7-m "/>
+		</exec>
+		<exec dir="." executable="rm" osfamily="Windows">
+			<arg line="-rf build/runtime/tmp_win/axoloti_runtime/platform_win/lib/gcc/arm-none-eabi/4.9.3/armv6-m build/runtime/tmp_win/axoloti_runtime/platform_win/lib/gcc/arm-none-eabi/4.9.3/armv7-ar build/runtime/tmp_win/axoloti_runtime/platform_win/lib/gcc/arm-none-eabi/4.9.3/armv7-m "/>
+		</exec>
   </target>
 
-  <target name="bundle" if="build.bundle">
+  <target name="userguide">
+	<echo>generate user guide</echo>
+	<exec dir="." executable="curl" failifexecutionfails="false">
+		<arg line="http://community.axoloti.com/raw/50/1 -o doc/userguide.md"/>
+	</exec>
+	<exec dir="." executable="perl" failifexecutionfails="false">
+		<arg line="thirdparty/Markdown_1.0.1/Markdown.pl -output 'doc/user guide.html' --html4tags doc/userguide.md"/>
+	</exec>
+  </target>
+
+  <target name="bundle" if="build.bundle" depends="calc.build.version, calc.short.version, userguide">
+	<echo>bundling ${build.version} ${short.version}</echo>
 	<echo>${java.home}</echo>
+	<exec dir="." executable="rm" >
+		<arg line="-rf build/bundles/"/>
+	</exec>
 	<taskdef resource="com/sun/javafx/tools/ant/antlib.xml"      
 			uri="javafx:com.sun.javafx.tools.ant"
 			classpath=".:${java.home}/../lib/ant-javafx.jar"/>    
 	<fx:resources id="appRes">
+		 <fx:fileset type="license" dir="." includes="license.txt"/>
 		 <fx:fileset dir="dist">
          		<include name="axoloti-app.jar"/>
 		 </fx:fileset>
@@ -199,9 +256,17 @@
 			 <include name="usb4java-1.2.0/lib/libusb4java-1.2.0-windows-x86_64.jar"/>
 		 </fx:fileset>
 		 <fx:fileset dir=".">
+			 <include name="doc/*"/>
 			 <include name="patches/**/*"/>
 			 <include name="objects/**/*"/>
-			 <include name="firmware/**/*"/>
+			 <include name="firmware/*" />
+			 <include name="firmware/STM*/**/*" />
+			 <include name="firmware/samples/*" />
+			 <include name="firmware/build/*.bin" />
+			 <include name="firmware/build/*.elf" />
+			 <include name="firmware/flasher/*" />
+			 <include name="firmware/flasher/flasher_build/*.bin" />
+			 <include name="firmware/flasher/flasher_build/*.elf" />
 			 <include name="chibios/*"/>
 			 <include name="chibios/boards/ST_STM32F4_DISCOVERY/*"/>
 			 <include name="chibios/ext/**/*"/>
@@ -237,16 +302,20 @@
 		</manifest>
 	</fx:jar> 
 
-    	<fx:deploy os="Linux" nativeBundles="deb" width="100" height="100" outdir="build/" outfile="AxolotiApp">
+    	<fx:deploy os="Linux" nativeBundles="deb" width="100" height="100" outdir="build/" outfile="AxolotiApp" version="${build.version}">
             <fx:info title="Axoloti" 
 		     vendor="axoloti" 
 		     description="Axoloti application"
 		     license="GPL"
 		     copyright="Axoloti.com" >
-		<fx:icon href="src/main/java/resources/axoloti_icon.png"/>
-	      </fx:info>
-            <fx:application mainClass="axoloti.Axoloti"/>
-	    <fx:resources refid="appRes"/>
+		  		<fx:icon href="src/main/java/resources/icon_128x128.png"/>
+				<fx:splash href="src/main/java/resources/splash.png"/>
+<!-- not supported on travis jdk8 ?
+		  		<fx:association icon="src/main/java/resources/icon_128x128.png" mimetype="application/xml" extension="axp axs axh axo"/>
+-->
+	      	</fx:info>
+			<fx:application name="Axoloti" mainClass="axoloti.Axoloti" version="${short.version}"/>
+	    	<fx:resources refid="appRes"/>
     	</fx:deploy>
 
     	<fx:deploy os="Mac OS X" nativeBundles="dmg" width="100" height="100" outdir="build/" outfile="AxolotiApp" version="${build.version}">
@@ -255,11 +324,19 @@
 		     description="Axoloti application"
 		     license="GPL"
 		     copyright="Axoloti.com" >
-		<fx:icon href="src/main/java/resources/axoloti_icon.icns"/>
-	      </fx:info>
-            <fx:application mainClass="axoloti.Axoloti"/>
-	    <fx:resources refid="appRes"/>
+				<fx:icon href="src/main/java/resources/axoloti_icon.icns"/>
+				<fx:splash href="src/main/java/resources/splash.png"/>
+<!-- not supported on travis jdk8 ?
+		  		<fx:association mimetype="application/xml" extension="axp axs axh axo"/>
+-->
+	      	</fx:info>
+			<fx:application name="Axoloti" mainClass="axoloti.Axoloti" version="Mac-${short.version}"/>
+	    	<fx:resources refid="appRes"/>
     	</fx:deploy>
+
+	<exec dir="." executable="mv" os="Linux">
+		<arg line="build/bundles/axoloti-${short.version}.deb build/bundles/axoloti-linux-${short.version}.deb"/>
+	</exec>
 
     	<fx:deploy os="Windows" nativeBundles="msi" width="100" height="100" outdir="build/" outfile="AxolotiApp" version="${build.version}">
             <fx:info title="Axoloti" 
@@ -267,18 +344,46 @@
 		     description="Axoloti application"
 		     license="GPL"
 		     copyright="Axoloti.com" >
-		<fx:icon href="src/main/java/resources/axoloti_icon.png"/>
-	      </fx:info>
-            <fx:application mainClass="axoloti.Axoloti"/>
+				<fx:icon href="src/main/java/resources/axoloti_icon.ico"/>
+				<fx:splash href="src/main/java/resources/splash.png"/>
+<!-- not supported on travis jdk8 ?
+		  		<fx:association icon="src/main/java/resources/axoloti_icon.ico" mimetype="application/xml" extension="axp axs axh axo"/>
+-->
+	      	</fx:info>
+			<fx:application name="Axoloti" mainClass="axoloti.Axoloti" version="${short.version}"/>
 	    <fx:resources refid="appRes"/>
     	</fx:deploy>
 
+	<exec dir="." executable="mv" osfamily="Windows">
+		<arg line="build/bundles/axoloti-${short.version}.msi build/bundles/axoloti-win-${short.version}.msi"/>
+	</exec>
+
   </target>
 
-    <target name="create.build.version">
+
+    <target name="calc.short.version">
+        <exec executable="git" outputproperty="tag.short.version" failifexecutionfails="false">
+            <arg line = "describe --tags --always" />
+        </exec>
+        <exec executable="sed" inputstring="${tag.short.version}" outputproperty="short.version" failifexecutionfails="false">
+            <arg line = "'s/[a-zA-Z].*//'" />
+	</exec>
+        <property name="short.version" value="${tag.short.version}"/>
+	<echo> calculated short ${short.version}</echo>
+    </target>
+
+    <target name="calc.build.version">
+        <exec executable="git" outputproperty="build.version" failifexecutionfails="false">
+            <arg line = "describe --long --tags --dirty --always" />
+        </exec>
+		<echo> calculated ${build.version}</echo>
+    </target>
+
+    <target name="create.build.version" depends = "calc.build.version">
+        <property name="build.version" value="(git missing)"/>
         <echo output="src/main/java/axoloti/Version.java" >package axoloti;</echo>
         <echo output="src/main/java/axoloti/Version.java" append="true">public class Version {</echo>
-        <echo output="src/main/java/axoloti/Version.java" append="true">public final static String AXOLOTI_VERSION ="1.0.0";</echo>
+        <echo output="src/main/java/axoloti/Version.java" append="true">public final static String AXOLOTI_VERSION ="${build.version}";</echo>
         <echo output="src/main/java/axoloti/Version.java" append="true">};</echo>
     </target>
       

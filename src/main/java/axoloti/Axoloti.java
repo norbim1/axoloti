@@ -139,7 +139,11 @@ public class Axoloti {
             String defaultRelease = curDir;
             if (OSDetect.getOS() == OSDetect.OS.WIN) {
                 // not sure which versions of windows this is valid for, good for 8!
+<<<<<<< HEAD
                 defaultHome = curDir + File.separator + "Patch";
+=======
+                defaultHome = System.getenv("HOMEPATH") + File.separator + "Documents" + File.separator + "axoloti";
+>>>>>>> JohannesTaelman/master
                 defaultRuntime = System.getenv("ProgramFiles") + File.separator + "axoloti_runtime";
             } else if (OSDetect.getOS() == OSDetect.OS.MAC) {
                 defaultHome = System.getenv("HOME") + "/Documents/axoloti";
