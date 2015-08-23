@@ -17,6 +17,10 @@
  */
 package axoloti;
 
+import static axoloti.Axoloti.FIRMWARE_DIR;
+import static axoloti.Axoloti.HOME_DIR;
+import static axoloti.Axoloti.RELEASE_DIR;
+import static axoloti.Axoloti.RUNTIME_DIR;
 import axoloti.dialogs.AboutFrame;
 import axoloti.dialogs.AxolotiRemoteControl;
 import axoloti.dialogs.FileManagerFrame;
@@ -72,6 +76,11 @@ import qcmds.QCmdStart;
 import qcmds.QCmdStop;
 import qcmds.QCmdUploadFWSDRam;
 import qcmds.QCmdUploadPatch;
+
+
+
+
+
 
 /**
  *
@@ -214,6 +223,23 @@ public final class MainFrame extends javax.swing.JFrame implements ActionListene
         midiInput = new AxolotiMidiInput();
         initMidiInput(prefs.getMidiInputDevice());
 
+        if (!TestDir(HOME_DIR, true)) {
+             Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, "Home directory is invalid:{0}, does it exist?, can it be written to?", System.getProperty(Axoloti.HOME_DIR));
+        }
+
+        if (!TestDir(RELEASE_DIR, false)) {
+             Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, "Release directory is invalid:{0}, does it exist?", System.getProperty(Axoloti.RELEASE_DIR));
+        }
+        if (!TestDir(RUNTIME_DIR, false)) {
+             Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, "Runtime directory is invalid:{0}, is the runtime installed? correctly?", System.getProperty(Axoloti.RUNTIME_DIR));
+        }
+
+        if (!TestDir(FIRMWARE_DIR, false)) {
+             Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, "Firmware directory is invalid:{0}, does it exist?", System.getProperty(Axoloti.FIRMWARE_DIR));
+        }
+        
+        
+        
         ShowDisconnect();
 
         boolean success = qcmdprocessor.serialconnection.connect();
@@ -251,6 +277,23 @@ public final class MainFrame extends javax.swing.JFrame implements ActionListene
             }
         }
     }
+    
+    
+    static boolean TestDir(String var, boolean write) {
+    String ev = System.getProperty(var);
+    File f = new File(ev);
+    if (!f.exists()) {
+        return false;
+    }
+    if (!f.isDirectory()) {
+        return false;
+    }
+    if (write && !f.canWrite()) {
+        return false;
+    }
+
+    return true;
+}
 
     void PopulateLibraryMenu(JMenu parent) {
         JMenu ptut = new JMenu("tutorials");

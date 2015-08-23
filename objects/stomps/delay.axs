@@ -33,10 +33,10 @@
       <params/>
       <attribs/>
    </obj>
-   <obj type="delay/write sdram" sha="aa55d7ae111ced1fafde9a6f6386d746292dc8d1" uuid="5ae03f8d7b815edcfc40585d8bbac2ed48460fba" name="d1" x="154" y="210">
+   <obj type="delay/write" sha="e127c6f8114715d89b3516a6701b262f7e8f5420" uuid="bd73958e3830021807ee97a8cff4500a72a5710d" name="d1" x="154" y="210">
       <params/>
       <attribs>
-         <combo attributeName="size" selection="131072 (2.37s)"/>
+         <combo attributeName="size" selection="8192 (170ms)"/>
       </attribs>
    </obj>
    <obj type="delay/read" sha="5fca22dde504617cc3aec49fd5fcc1d7296290ca" uuid="739f69bf3dae8db57f1412d0d15cb37bbae3f4c" name="read_1" x="154" y="266">
@@ -90,7 +90,7 @@
    <windowPos>
       <x>310</x>
       <y>300</y>
-      <width>688</width>
-      <height>506</height>
+      <width>779</width>
+      <height>566</height>
    </windowPos>
 </patch-1.0>

@@ -33,6 +33,9 @@
 
 void axoloti_init(void);
 
+extern void UDA1380_WriteRegister(uint8_t RegisterAddr, uint16_t RegisterValue);
+extern void UDA1380_I2CStart();
+extern void UDA1380_I2CStop();
 extern void ADAU1961_WriteRegister(uint16_t RegisterAddr,
                                    uint8_t RegisterValue);
 extern void ADAU1961_I2CStart();

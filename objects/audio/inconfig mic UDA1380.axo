@@ -1,0 +1,38 @@
+<objdefs>
+   <obj.normal id="inconfig mic UDA1380" uuid="c4383a22037d0cbef8a03fcf74781b241343c6ae" sha="ed1e759140014936873cd1c2ebb63832b57fc005">
+      <sDescription>Audio input configuration for electret microphone UDA1380</sDescription>
+      <author>Johannes Taelman</author>
+      <license>BSD</license>
+      <inlets/>
+      <outlets/>
+      <displays/>
+      <params/>
+      <attribs>
+         <combo name="bias">
+            <MenuEntries>
+               <string>AVDD x0.90</string>
+               <string>AVDD x0.65</string>
+            </MenuEntries>
+            <CEntries>
+               <string>0</string>
+               <string>4</string>
+            </CEntries>
+         </combo>
+         <combo name="mperf">
+            <MenuEntries>
+               <string>High</string>
+               <string>Normal</string>
+            </MenuEntries>
+            <CEntries>
+               <string>0</string>
+               <string>1</string>
+            </CEntries>
+         </combo>
+      </attribs>
+      <depends>
+         <depend>UDA1380</depend>
+      </depends>
+      <code.init><![CDATA[UDA1380_WriteRegister(0x10,attr_bias+attr_mperf+1);
+]]></code.init>
+   </obj.normal>
+</objdefs>

@@ -94,12 +94,12 @@ public class Axoloti {
 
     static boolean TestDir(String var) {
         String ev = System.getProperty(var);
-        File f = new File(var);
-        if (f.exists()) {
+        File f = new File(ev);
+        if (!f.exists()) {
             System.err.println(var + " Directory does not exist " + ev);
             return false;
         }
-        if (f.isDirectory()) {
+        if (!f.isDirectory()) {
             System.err.println(var + " should be a valid directory " + ev);
             return false;
         }
@@ -137,13 +137,16 @@ public class Axoloti {
             String defaultHome = curDir;
             String defaultRuntime = curDir;
             String defaultRelease = curDir;
-            if (OSDetect.getOS() == OSDetect.OS.WIN) {
-                // not sure which versions of windows this is valid for, good for 8!
-<<<<<<< HEAD
+            
+            File git = new File("."+File.separator+".git");
+            if(git.exists()) {
+                // developer using git, assume they want everything local dir
+                System.out.println("defaulting to developer defaults, can be overridden");
                 defaultHome = curDir + File.separator + "Patch";
-=======
-                defaultHome = System.getenv("HOMEPATH") + File.separator + "Documents" + File.separator + "axoloti";
->>>>>>> JohannesTaelman/master
+                defaultRuntime = ".";
+            } else if (OSDetect.getOS() == OSDetect.OS.WIN) {
+                // not sure which versions of windows this is valid for, good for 8!
+                defaultHome = curDir + File.separator + "Patch";
                 defaultRuntime = System.getenv("ProgramFiles") + File.separator + "axoloti_runtime";
             } else if (OSDetect.getOS() == OSDetect.OS.MAC) {
                 defaultHome = System.getenv("HOME") + "/Documents/axoloti";
@@ -164,21 +167,21 @@ public class Axoloti {
                 buildir.mkdir();
             }
             if (!TestDir(HOME_DIR)) {
-                System.exit(-1);
+                 System.err.println("Home directory is invalid");
             }
 
             BuildEnv(RELEASE_DIR, defaultRelease);
             if (!TestDir(RELEASE_DIR)) {
-                System.exit(-1);
+                 System.err.println("Release directory is invalid");
             }
             BuildEnv(RUNTIME_DIR, defaultRuntime);
             if (!TestDir(RUNTIME_DIR)) {
-                System.exit(-1);
+                 System.err.println("Runtime directory is invalid");
             }
 
             BuildEnv(FIRMWARE_DIR, System.getProperty(RELEASE_DIR) + File.separator + "firmware");
             if (!TestDir(FIRMWARE_DIR)) {
-                System.exit(-1);
+                 System.err.println("Firmware directory is invalid");
             }
 
             Preferences prefs = Preferences.LoadPreferences();
