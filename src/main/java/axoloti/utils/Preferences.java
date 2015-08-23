@@ -20,10 +20,12 @@ package axoloti.utils;
 import axoloti.MainFrame;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.simpleframework.xml.Element;
 import org.simpleframework.xml.ElementList;
+import org.simpleframework.xml.ElementMap;
 import org.simpleframework.xml.Root;
 import org.simpleframework.xml.Serializer;
 import org.simpleframework.xml.core.Persister;
@@ -50,13 +52,19 @@ public class Preferences {
     Boolean ExpertMode;
     @ElementList(required = false)
     ArrayList<String> recentFiles = new ArrayList<String>();
+    
+    @Deprecated
     @Element(required = false)
     String MidiInputDevice;
-    
     @Element(required = false)
     String RuntimeDir;
     @Element(required = false)
     String FirmwareDir;
+    @Element(required = false)
+    String FavouriteDir;
+    
+    @ElementMap(required=false, entry="Boards", key="cpuid", attribute=true, inline=true)
+    HashMap<String,String> BoardNames;
     
     boolean isDirty = false;
 
@@ -80,8 +88,11 @@ public class Preferences {
         if (ExpertMode == null) {
             ExpertMode = false;
         }
-        if (MidiInputDevice == null) {
-            MidiInputDevice = "";
+        if (FavouriteDir == null) {
+            FavouriteDir = "";
+        }
+        if (BoardNames == null) {
+            BoardNames = new HashMap<String, String>();
         }
     }
 
@@ -160,7 +171,7 @@ public class Preferences {
                     } else {
                         System.setProperty(axoloti.Axoloti.FIRMWARE_DIR, prefs.FirmwareDir);
                     }
-
+                    singleton.MidiInputDevice = null; // clear it out for the future
                 } catch (Exception ex) {
                     Logger.getLogger(Preferences.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -228,16 +239,16 @@ public class Preferences {
         SetDirty();
     }
 
-    public String getMidiInputDevice() {
-        return MidiInputDevice;
+    public String getFavouriteDir() {
+        return FavouriteDir;
     }
 
-    public void setMidiInputDevice(String MidiInputDevice) {
-        if (this.MidiInputDevice.equals(MidiInputDevice)) {
+    public void setFavouriteDir(String favouriteDir) {
+        if (this.FavouriteDir.equals(favouriteDir)) {
             return;
         }
-        this.MidiInputDevice = MidiInputDevice;
-        MainFrame.mainframe.initMidiInput(this.MidiInputDevice);
+        this.FavouriteDir = favouriteDir;
+        MainFrame.mainframe.updateFavouriteMenu();
         SetDirty();
     }
 
@@ -249,5 +260,22 @@ public class Preferences {
     public void SetRuntimeDir(String dir) {
         RuntimeDir = dir;
         System.setProperty(axoloti.Axoloti.RUNTIME_DIR, dir);
+    }
+
+    public String getBoardName(String cpu) {
+        if(cpu==null) return null;
+        if (BoardNames.containsKey(cpu)) 
+            return BoardNames.get(cpu);
+        return null;
+    }
+
+    public void setBoardName(String cpuid, String name) {
+        if (name == null) {
+            BoardNames.remove(cpuid);
+        }
+        else {
+            BoardNames.put(cpuid, name);
+        }
+        SetDirty();
     }
 }

@@ -45,10 +45,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -101,8 +104,8 @@ public final class MainFrame extends javax.swing.JFrame implements ActionListene
     QCmdProcessor qcmdprocessor;
     Thread qcmdprocessorThread;
     static public Cursor transparentCursor;
-    AxolotiMidiInput midiInput;
     private final String[] args;
+    JMenu favouriteMenu;
 
     /**
      * Creates new form MainFrame
@@ -215,13 +218,16 @@ public final class MainFrame extends javax.swing.JFrame implements ActionListene
         PopulateLibraryMenu(jMenuLibrary);
 
         JMenu phelps = new JMenu("Library");
-        PopulateLibraryMenu(phelps, System.getProperty(Axoloti.RELEASE_DIR) + "/objects", ".axh");
+        PopulatePatchMenu(phelps, System.getProperty(Axoloti.RELEASE_DIR) + "/objects", ".axh");
         jMenuHelp.add(phelps);
 
         axoObjects = new AxoObjects();
         axoObjects.LoadAxoObjects();
-        midiInput = new AxolotiMidiInput();
-        initMidiInput(prefs.getMidiInputDevice());
+        
+        favouriteMenu = new JMenu("Favourites");
+        jMenuFile.insert(favouriteMenu, 3);
+        
+        updateFavouriteMenu();
 
         if (!TestDir(HOME_DIR, true)) {
              Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, "Home directory is invalid:{0}, does it exist?, can it be written to?", System.getProperty(Axoloti.HOME_DIR));
@@ -295,16 +301,20 @@ public final class MainFrame extends javax.swing.JFrame implements ActionListene
     return true;
 }
 
+    void PopulateFavouriteMenu(JMenu parent) {
+        PopulatePatchMenu(parent,prefs.getFavouriteDir(), ".axp");
+    }
+
     void PopulateLibraryMenu(JMenu parent) {
         JMenu ptut = new JMenu("tutorials");
-        PopulateLibraryMenu(ptut, System.getProperty(Axoloti.RELEASE_DIR) + "/patches/tutorials", ".axp");
+        PopulatePatchMenu(ptut, System.getProperty(Axoloti.RELEASE_DIR) + "/patches/tutorials", ".axp");
         parent.add(ptut);
         JMenu pdemos = new JMenu("demos");
-        PopulateLibraryMenu(pdemos, System.getProperty(Axoloti.RELEASE_DIR) + "/patches/demos", ".axp");
+        PopulatePatchMenu(pdemos, System.getProperty(Axoloti.RELEASE_DIR) + "/patches/demos", ".axp");
         parent.add(pdemos);
     }
 
-    void PopulateLibraryMenu(JMenu parent, String path, String ext) {
+    void PopulatePatchMenu(JMenu parent, String path, String ext) {
         File dir = new File(path);
         final String extension = ext;
         for (File subdir : dir.listFiles(new java.io.FileFilter() {
@@ -314,7 +324,7 @@ public final class MainFrame extends javax.swing.JFrame implements ActionListene
             }
         })) {
             JMenu fm = new JMenu(subdir.getName());
-            PopulateLibraryMenu(fm, subdir.getPath(), extension);
+            PopulatePatchMenu(fm, subdir.getPath(), extension);
             if (fm.getItemCount() > 0) {
                 parent.add(fm);
             }
@@ -377,6 +387,7 @@ public final class MainFrame extends javax.swing.JFrame implements ActionListene
         jMenuFile = new javax.swing.JMenu();
         jMenuNew = new javax.swing.JMenuItem();
         jMenuOpen = new javax.swing.JMenuItem();
+        jMenuOpenURL = new javax.swing.JMenuItem();
         jMenuLibrary = new javax.swing.JMenu();
         recentFileMenu1 = new axoloti.menus.RecentFileMenu();
         jSeparator2 = new javax.swing.JPopupMenu.Separator();
@@ -506,6 +517,14 @@ jMenuOpen.addActionListener(new java.awt.event.ActionListener() {
     }
     });
     jMenuFile.add(jMenuOpen);
+
+    jMenuOpenURL.setText("Open from URL...");
+    jMenuOpenURL.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            jMenuOpenURLActionPerformed(evt);
+        }
+    });
+    jMenuFile.add(jMenuOpenURL);
 
     jMenuLibrary.setText("Library");
     jMenuFile.add(jMenuLibrary);
@@ -670,13 +689,13 @@ jMenuItemSelectCom.addActionListener(new java.awt.event.ActionListener() {
 
     jMenuWindow.setText("Window");
     jMenuWindow.addMenuListener(new javax.swing.event.MenuListener() {
-        public void menuCanceled(javax.swing.event.MenuEvent evt) {
+        public void menuSelected(javax.swing.event.MenuEvent evt) {
+            jMenuWindowMenuSelected(evt);
         }
         public void menuDeselected(javax.swing.event.MenuEvent evt) {
             jMenuWindowMenuDeselected(evt);
         }
-        public void menuSelected(javax.swing.event.MenuEvent evt) {
-            jMenuWindowMenuSelected(evt);
+        public void menuCanceled(javax.swing.event.MenuEvent evt) {
         }
     });
     jMenuBar1.add(jMenuWindow);
@@ -1048,6 +1067,20 @@ jMenuItemSelectCom.addActionListener(new java.awt.event.ActionListener() {
         flashUsingSDRam(fname, pname);
     }//GEN-LAST:event_jMenuItemFlashDefaultActionPerformed
 
+    private void jMenuOpenURLActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuOpenURLActionPerformed
+        String url = JOptionPane.showInputDialog(this, "Enter URL:");
+        if (url == null) return;
+        try {
+            InputStream input = new URL(url).openStream();
+            String name = url.substring(url.lastIndexOf("/")+1,url.length());
+            OpenPatch(name, input);
+        } catch (MalformedURLException ex) {
+            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, "Invalid URL {0}\n{1}", new Object[]{url,ex});
+        } catch (IOException ex) {
+            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, "Unable to open URL {0}\n{1}", new Object[]{url,ex});
+        }
+    }//GEN-LAST:event_jMenuOpenURLActionPerformed
+
     public void NewPatch() {
         PatchGUI patch1 = new PatchGUI();
         PatchFrame pf = new PatchFrame(patch1, qcmdprocessor);
@@ -1119,6 +1152,22 @@ jMenuItemSelectCom.addActionListener(new java.awt.event.ActionListener() {
         }
     }
 
+    public void OpenPatch(String name, InputStream stream) {
+        Serializer serializer = new Persister();
+        try {
+            PatchGUI patch1 = serializer.read(PatchGUI.class, stream);
+            PatchFrame pf = new PatchFrame(patch1, qcmdprocessor);
+            patch1.setFileNamePath(name);
+            patch1.PostContructor();
+            pf.UpdateConnectStatus();
+            patch1.setFileNamePath(name);
+            pf.setVisible(true);
+            patches.add(patch1);
+        } catch (Exception ex) {
+            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
     public void OpenPatch(File f) {
         Serializer serializer = new Persister();
         try {
@@ -1173,6 +1222,7 @@ jMenuItemSelectCom.addActionListener(new java.awt.event.ActionListener() {
     private javax.swing.JMenu jMenuLibrary;
     private javax.swing.JMenuItem jMenuNew;
     private javax.swing.JMenuItem jMenuOpen;
+    private javax.swing.JMenuItem jMenuOpenURL;
     private javax.swing.JMenuItem jMenuQuit;
     private javax.swing.JMenuItem jMenuRegenerateObjects;
     private javax.swing.JMenuItem jMenuReloadObjects;
@@ -1246,7 +1296,14 @@ jMenuItemSelectCom.addActionListener(new java.awt.event.ActionListener() {
         if (cpuId == null) {
             jLabelCPUID.setText(" ");
         } else {
-            jLabelCPUID.setText("Cpu ID = " + cpuId);
+            String name = MainFrame.prefs.getBoardName(cpuId);
+            String txt;
+            if(name==null) {
+                jLabelCPUID.setText("Cpu ID = " + cpuId);
+            } else {
+                jLabelCPUID.setText("Cpu ID = " + cpuId + " ( " + name + " ) ");
+            }
+            
         }
     }
 
@@ -1333,7 +1390,16 @@ jMenuItemSelectCom.addActionListener(new java.awt.event.ActionListener() {
         }
     }
 
-    public void initMidiInput(String midiInputDevice) {
-        midiInput.start(midiInputDevice);
+    public void updateFavouriteMenu() {
+        String favouriteDir = prefs.getFavouriteDir();
+        if (favouriteDir!=null && !favouriteDir.isEmpty()) {
+            File f = new File(favouriteDir);
+            if(f.exists() && f.isDirectory()) {
+                PopulateFavouriteMenu(favouriteMenu);
+                favouriteMenu.setVisible(true);
+                return;
+            }
+        }
+        favouriteMenu.setVisible(false);
     }
 }
