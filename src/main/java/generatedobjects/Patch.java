@@ -22,6 +22,7 @@ import axoloti.attributedefinition.AxoAttributeSpinner;
 import axoloti.attributedefinition.AxoAttributeTablename;
 import axoloti.inlets.InletBool32;
 import axoloti.inlets.InletBool32Rising;
+import axoloti.inlets.InletCharPtr32;
 import axoloti.inlets.InletFrac32;
 import axoloti.inlets.InletFrac32Buffer;
 import axoloti.inlets.InletInt32;
@@ -65,10 +66,12 @@ public class Patch extends gentools {
         WriteAxoObject(catName, Create_recvi());
         WriteAxoObject(catName, Create_recvb());
         WriteAxoObject(catName, CreateLoadPatch());
+        WriteAxoObject(catName, CreateLoadPatchFn());
 //        WriteAxoObject("patch", CreateInitMsg());
         WriteAxoObject(catName, CreatePolyIndex());
 
         WriteAxoObject(catName, CreatePatcher());
+        WriteAxoObject(catName, CreateCyclecounter());
 
     }
 
@@ -191,9 +194,9 @@ public class Patch extends gentools {
         o.sMidiCode = "if ((status == MIDI_CONTROL_CHANGE + attr_midichannel)&&(data1 == %cc%)) {\n"
                 + "  PExModulationSourceChange(\n"
                 + "    &parent->PExModulationSources[parent->MODULATOR_attr_name][0],\n"
-                + "    &parent->PExModulationProd[parent->polyIndex][parent->MODULATOR_attr_name][0],\n"
                 + "    NMODULATIONTARGETS,\n"
                 + "    &parent->PExch[0],\n"
+                + "    &parent->PExModulationPrevVal[parent->polyIndex][parent->MODULATOR_attr_name],\n"
                 + "    data2<<20);\n"
                 + "}\n";
         return o;
@@ -212,9 +215,9 @@ public class Patch extends gentools {
         o.sKRateCode = "if ((%trig%>0) && !ntrig) {\n"
                 + "  PExModulationSourceChange(\n"
                 + "    &parent->PExModulationSources[parent->MODULATOR_attr_name][0],\n"
-                + "    &parent->PExModulationProd[parent->polyIndex][parent->MODULATOR_attr_name][0],\n"
                 + "    NMODULATIONTARGETS,\n"
                 + "    &parent->PExch[0],\n"
+                + "    &parent->PExModulationPrevVal[parent->polyIndex][parent->MODULATOR_attr_name],\n"
                 + "    %v%);"
                 + "  ntrig=1;\n"
                 + "}\n"
@@ -230,8 +233,8 @@ public class Patch extends gentools {
     static AxoObjectAbstract Create_hyperlink() {
         AxoObjectHyperlink o = new AxoObjectHyperlink("hyperlink", "hyperlink to a patch or a URL opened in your browser");
         return o;
-    }    
-    
+    }
+
     static AxoObject CreatePreset() {
         AxoObject o = new AxoObject("preset", "apply preset, preset zero = init, and will reset ALL parameters, not just the presets");
         o.inlets.add(new InletInt32("preset", "preset number"));
@@ -254,6 +257,17 @@ public class Patch extends gentools {
         return o;
     }
 
+    static AxoObject CreateLoadPatchFn() {
+        AxoObject o = new AxoObject("load fn", "load a patch from sdcard");
+        o.inlets.add(new InletBool32Rising("trig", "trigger"));
+        o.inlets.add(new InletCharPtr32("fn", "filename"));
+        o.sLocalData = "int ntrig;\n";
+        o.sInitCode = "ntrig = 1;\n";
+        o.sKRateCode = "   if ((%trig%>0) && !ntrig) {LoadPatch(inlet_fn); ntrig=1;}\n"
+                + "   else if (!(%trig%>0)) ntrig=0;\n";
+        return o;
+    }
+
     static AxoObject CreateInitMsg() {
         AxoObject o = new AxoObject("initmsg", "prints a message on patch init");
         o.attributes.add(new AxoAttributeTablename("message"));
@@ -270,6 +284,13 @@ public class Patch extends gentools {
 
     static AxoObject CreatePatcher() {
         AxoObject o = new AxoObjectPatcher("patcher", "Subpatch object stored in the patch document (IN DEVELOPMENT!)");
+        return o;
+    }
+
+    static AxoObject CreateCyclecounter() {
+        AxoObject o = new AxoObject("cyclecounter", "Outputs the cpu clock cycle counter, a 32bit integer incrementing on every clock cycle. Useful for benchmarking objects.");
+        o.outlets.add(new OutletInt32("t", "cpu time in ticks"));
+        o.sKRateCode = "outlet_t = hal_lld_get_counter_value();\n";
         return o;
     }
 }
