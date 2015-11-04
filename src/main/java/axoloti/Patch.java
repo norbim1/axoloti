@@ -20,6 +20,7 @@ package axoloti;
 import axoloti.attribute.AttributeInstance;
 import axoloti.attributedefinition.AxoAttributeComboBox;
 import axoloti.inlets.InletBool32;
+import axoloti.inlets.InletCharPtr32;
 import axoloti.inlets.InletFrac32;
 import axoloti.inlets.InletFrac32Buffer;
 import axoloti.inlets.InletInstance;
@@ -36,12 +37,13 @@ import axoloti.object.AxoObjectInstanceZombie;
 import axoloti.object.AxoObjectZombie;
 import axoloti.object.AxoObjects;
 import axoloti.outlets.OutletBool32;
+import axoloti.outlets.OutletCharPtr32;
 import axoloti.outlets.OutletFrac32;
 import axoloti.outlets.OutletFrac32Buffer;
 import axoloti.outlets.OutletInstance;
 import axoloti.outlets.OutletInt32;
 import axoloti.parameters.ParameterInstance;
-import axoloti.utils.Constants;
+import axoloti.utils.Preferences;
 import displays.DisplayInstance;
 import java.awt.Dimension;
 import java.awt.Point;
@@ -104,6 +106,7 @@ public class Patch {
 
     // patch this patch is contained in
     private Patch container = null;
+    private AxoObjectInstanceAbstract controllerinstance;
 
     public boolean presetUpdatePending = false;
 
@@ -692,12 +695,19 @@ public class Patch {
 
     public HashSet<String> getIncludes() {
         HashSet<String> includes = new HashSet<String>();
+        if(controllerinstance != null) {
+            Set<String> i = controllerinstance.getType().GetIncludes();
+            if (i != null) {
+                includes.addAll(i);
+            }
+        }
         for (AxoObjectInstanceAbstract o : objectinstances) {
             Set<String> i = o.getType().GetIncludes();
             if (i != null) {
                 includes.addAll(i);
             }
         }
+        
         return includes;
     }
 
@@ -763,10 +773,22 @@ public class Patch {
                 k++;
             }
         }
+        c +="/* controller classes */\n";
+        if (controllerinstance != null) {
+            c += controllerinstance.GenerateClass(classname, OnParentAccess, enableOnParent);
+        }
         c += "/* object classes */\n";
         for (AxoObjectInstanceAbstract o : objectinstances) {
             c += o.GenerateClass(classname, OnParentAccess, enableOnParent);
         }
+        c +="/* controller instances */\n";
+        if (controllerinstance != null) {
+            String s = controllerinstance.getCInstanceName();
+            if (!s.isEmpty()) {
+                c += "     " + s + " " + s + "_i;\n";
+            }
+        }
+
         c += "/* object instances */\n";
         for (AxoObjectInstanceAbstract o : objectinstances) {
             String s = o.getCInstanceName();
@@ -863,6 +885,20 @@ public class Patch {
 
     String GenerateObjInitCodePlusPlusSub(String className, String parentReference) {
         String c = "";
+        if (controllerinstance != null) {
+            String s = controllerinstance.getCInstanceName();
+            if (!s.isEmpty()) {
+                c += "   " + s + "_i.Init(" + parentReference;
+                for (DisplayInstance i : controllerinstance.GetDisplayInstances()) {
+                    if (i.display.getLength() > 0) {
+                        c += ", ";
+                        c += i.valueName("");
+                    }
+                }
+                c += " );\n";
+            }
+        }
+
         for (AxoObjectInstanceAbstract o : objectinstances) {
             String s = o.getCInstanceName();
             if (!s.isEmpty()) {
@@ -936,6 +972,13 @@ public class Patch {
                 c += "   " + o.getCInstanceName() + "_i.Dispose();\n";
             }
         }
+        if (controllerinstance != null) {
+            String s = controllerinstance.getCInstanceName();
+            if (!s.isEmpty()) {
+                c += "   " + controllerinstance.getCInstanceName() + "_i.Dispose();\n";
+            }
+        }
+
         return c;
     }
 
@@ -947,7 +990,6 @@ public class Patch {
         c += "}\n\n";
         return c;
     }
-
     String GenerateDSPCodePlusPlusSub(String ClassName, boolean enableOnParent) {
         String c = "";
         c += "//--------- <nets> -----------//\n";
@@ -965,83 +1007,14 @@ public class Patch {
         c += "  static const int32buffer zerobuffer = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};\n";
         c += "  int32buffer UNCONNECTED_OUTPUT_BUFFER;\n";
         c += "//--------- </zero> ----------//\n";
+        
+        c += "//--------- <controller calls> ----------//\n";
+        if(controllerinstance != null) {
+            c += GenerateDSPCodePlusPlusSubObj(controllerinstance, ClassName, enableOnParent);
+        }
         c += "//--------- <object calls> ----------//\n";
         for (AxoObjectInstanceAbstract o : objectinstances) {
-            String s = o.getCInstanceName();
-            if (s.isEmpty()) {
-                continue;
-            }
-            c += "  " + o.getCInstanceName() + "_i.dsp(";
-//            c += "  " + o.GenerateDoFunctionName() + "(this";
-            boolean needsComma = false;
-            for (InletInstance i : o.GetInletInstances()) {
-                if (needsComma) {
-                    c += ", ";
-                }
-                Net n = GetNet(i);
-                if ((n != null) && (n.isValidNet())) {
-                    if (i.GetDataType().equals(n.GetDataType())) {
-                        if (n.NeedsLatch()
-                                && (objectinstances.indexOf(n.source.get(0).axoObj) >= objectinstances.indexOf(o))) {
-                            c += n.CName() + "Latch";
-                        } else {
-                            c += n.CName();
-                        }
-                    } else {
-                        if (n.NeedsLatch()
-                                && (objectinstances.indexOf(n.source.get(0).axoObj) >= objectinstances.indexOf(o))) {
-                            c += n.GetDataType().GenerateConversionToType(i.GetDataType(), n.CName() + "Latch");
-                        } else {
-                            c += n.GetDataType().GenerateConversionToType(i.GetDataType(), n.CName());
-                        }
-                    }
-                } else { // unconnected input
-                    c += i.GetDataType().GenerateSetDefaultValueCode();
-                }
-                needsComma = true;
-            }
-            for (OutletInstance i : o.GetOutletInstances()) {
-                if (needsComma) {
-                    c += ", ";
-                }
-                Net n = GetNet(i);
-                if ((n != null) && n.isValidNet()) {
-                    if (n.IsFirstOutlet(i)) {
-                        c += n.CName();
-                    } else {
-                        c += n.CName() + "+";
-                    }
-                } else {
-                    if (i.GetDataType() instanceof axoloti.datatypes.DataTypeBuffer) {
-                        c += "UNCONNECTED_OUTPUT_BUFFER";
-                    } else {
-                        c += "UNCONNECTED_OUTPUT";
-                    }
-                }
-                needsComma = true;
-            }
-            for (ParameterInstance i : o.getParameterInstances()) {
-                if (i.parameter.PropagateToChild == null) {
-                    if (needsComma) {
-                        c += ", ";
-                    }
-                    c += i.variableName("", false);
-                    needsComma = true;
-                }
-            }
-            for (DisplayInstance i : o.GetDisplayInstances()) {
-                if (i.display.getLength() > 0) {
-                    if (needsComma) {
-                        c += ", ";
-                    }
-                    c += i.valueName("");
-                    needsComma = true;
-                }
-            }
-            c += ");\n";
-//            c += "// --------" + o.getInstanceName() + "---------\n";
-//            c += o.GenerateKRateCode("data->");
-//            c += o.GenerateSRateCode("data->");
+            c += GenerateDSPCodePlusPlusSubObj(o,ClassName, enableOnParent);
         }
         c += "//--------- </object calls> ----------//\n";
 
@@ -1060,8 +1033,88 @@ public class Patch {
         return c;
     }
 
+    String GenerateDSPCodePlusPlusSubObj(AxoObjectInstanceAbstract o,String ClassName, boolean enableOnParent) {
+        String c = "";
+        String s = o.getCInstanceName();
+        if (s.isEmpty()) {
+            return c;
+        }
+        c += "  " + o.getCInstanceName() + "_i.dsp(";
+//            c += "  " + o.GenerateDoFunctionName() + "(this";
+        boolean needsComma = false;
+        for (InletInstance i : o.GetInletInstances()) {
+            if (needsComma) {
+                c += ", ";
+            }
+            Net n = GetNet(i);
+            if ((n != null) && (n.isValidNet())) {
+                if (i.GetDataType().equals(n.GetDataType())) {
+                    if (n.NeedsLatch()
+                            && (objectinstances.indexOf(n.source.get(0).axoObj) >= objectinstances.indexOf(o))) {
+                        c += n.CName() + "Latch";
+                    } else {
+                        c += n.CName();
+                    }
+                } else {
+                    if (n.NeedsLatch()
+                            && (objectinstances.indexOf(n.source.get(0).axoObj) >= objectinstances.indexOf(o))) {
+                        c += n.GetDataType().GenerateConversionToType(i.GetDataType(), n.CName() + "Latch");
+                    } else {
+                        c += n.GetDataType().GenerateConversionToType(i.GetDataType(), n.CName());
+                    }
+                }
+            } else { // unconnected input
+                c += i.GetDataType().GenerateSetDefaultValueCode();
+            }
+            needsComma = true;
+        }
+        for (OutletInstance i : o.GetOutletInstances()) {
+            if (needsComma) {
+                c += ", ";
+            }
+            Net n = GetNet(i);
+            if ((n != null) && n.isValidNet()) {
+                if (n.IsFirstOutlet(i)) {
+                    c += n.CName();
+                } else {
+                    c += n.CName() + "+";
+                }
+            } else {
+                if (i.GetDataType() instanceof axoloti.datatypes.DataTypeBuffer) {
+                    c += "UNCONNECTED_OUTPUT_BUFFER";
+                } else {
+                    c += "UNCONNECTED_OUTPUT";
+                }
+            }
+            needsComma = true;
+        }
+        for (ParameterInstance i : o.getParameterInstances()) {
+            if (i.parameter.PropagateToChild == null) {
+                if (needsComma) {
+                    c += ", ";
+                }
+                c += i.variableName("", false);
+                needsComma = true;
+            }
+        }
+        for (DisplayInstance i : o.GetDisplayInstances()) {
+            if (i.display.getLength() > 0) {
+                if (needsComma) {
+                    c += ", ";
+                }
+                c += i.valueName("");
+                needsComma = true;
+            }
+        }
+        c += ");\n";
+        return c;
+    }
+
     String GenerateMidiInCodePlusPlus() {
         String c = "";
+        if (controllerinstance != null) {
+            c += controllerinstance.GenerateCallMidiHandler();
+        }
         for (AxoObjectInstanceAbstract o : objectinstances) {
             c += o.GenerateCallMidiHandler();
         }
@@ -1184,9 +1237,25 @@ public class Patch {
     }
 
     String GenerateCode3() {
+        Preferences prefs = MainFrame.prefs;
+        controllerinstance = null;
+        String cobjstr = prefs.getControllerObject();
+        if (prefs.isControllerEnabled() && cobjstr != null && !cobjstr.isEmpty()) {
+            Logger.getLogger(Patch.class.getName()).log(Level.INFO, "Using controller object: {0}", cobjstr);
+            AxoObjectAbstract x = null;
+            ArrayList<AxoObjectAbstract> objs = MainFrame.axoObjects.GetAxoObjectFromName(cobjstr, GetCurrentWorkingDirectory());
+            if ((objs != null) && (!objs.isEmpty())) {
+                x = objs.get(0);
+            }
+            if (x != null) {
+                controllerinstance = x.CreateInstance(null,"ctrl0x123",new Point(0,0));
+            } else {
+                Logger.getLogger(Patch.class.getName()).log(Level.INFO, "Unable to created controller for : {0}", cobjstr);
+            }
+        }
+                
         CreateIID();
         SortByPosition();
-        String firmwaredir = System.getProperty(Axoloti.FIRMWARE_DIR);
         String c = "extern \"C\" { \n";
         c += generateIncludes();
         c += "}\n"
@@ -1246,6 +1315,8 @@ public class Patch {
                 ao.inlets.add(new InletBool32(o.getInstanceName(), o.getInstanceName()));
             } else if (o.typeName.equals("patch/inlet a")) {
                 ao.inlets.add(new InletFrac32Buffer(o.getInstanceName(), o.getInstanceName()));
+            } else if (o.typeName.equals("patch/inlet string")) {
+                ao.inlets.add(new InletCharPtr32(o.getInstanceName(), o.getInstanceName()));
             } else if (o.typeName.equals("patch/outlet f")) {
                 ao.outlets.add(new OutletFrac32(o.getInstanceName(), o.getInstanceName()));
             } else if (o.typeName.equals("patch/outlet i")) {
@@ -1254,6 +1325,8 @@ public class Patch {
                 ao.outlets.add(new OutletBool32(o.getInstanceName(), o.getInstanceName()));
             } else if (o.typeName.equals("patch/outlet a")) {
                 ao.outlets.add(new OutletFrac32Buffer(o.getInstanceName(), o.getInstanceName()));
+            } else if (o.typeName.equals("patch/outlet string")) {
+                ao.outlets.add(new OutletCharPtr32(o.getInstanceName(), o.getInstanceName()));
             }
             for (ParameterInstance p : o.getParameterInstances()) {
                 if (p.isOnParent()) {
@@ -1288,7 +1361,7 @@ public class Patch {
         }
         ao.sKRateCode += GenerateDSPCodePlusPlusSub("attr_parent", true);
         for (AxoObjectInstanceAbstract o : objectinstances) {
-            if (o.typeName.equals("patch/outlet f") || o.typeName.equals("patch/outlet i") || o.typeName.equals("patch/outlet b")) {
+            if (o.typeName.equals("patch/outlet f") || o.typeName.equals("patch/outlet i") || o.typeName.equals("patch/outlet b") || o.typeName.equals("patch/outlet string")) {
                 ao.sKRateCode += "   outlet_" + o.getLegalName() + " = " + o.getCInstanceName() + "_i._outlet;\n";
             } else if (o.typeName.equals("patch/outlet a")) {
                 ao.sKRateCode += "      for(i=0;i<BUFSIZE;i++) outlet_" + o.getLegalName() + "[i] = " + o.getCInstanceName() + "_i._outlet[i];\n";
@@ -1392,6 +1465,8 @@ public class Patch {
                 ao.inlets.add(new InletBool32(o.getInstanceName(), o.getInstanceName()));
             } else if (o.typeName.equals("patch/inlet a")) {
                 ao.inlets.add(new InletFrac32Buffer(o.getInstanceName(), o.getInstanceName()));
+            } else if (o.typeName.equals("patch/inlet string")) {
+                ao.inlets.add(new InletCharPtr32(o.getInstanceName(), o.getInstanceName()));
             } else if (o.typeName.equals("patch/outlet f")) {
                 ao.outlets.add(new OutletFrac32(o.getInstanceName(), o.getInstanceName()));
             } else if (o.typeName.equals("patch/outlet i")) {
@@ -1400,6 +1475,8 @@ public class Patch {
                 ao.outlets.add(new OutletBool32(o.getInstanceName(), o.getInstanceName()));
             } else if (o.typeName.equals("patch/outlet a")) {
                 ao.outlets.add(new OutletFrac32Buffer(o.getInstanceName(), o.getInstanceName()));
+            } else if (o.typeName.equals("patch/outlet string")) {
+                ao.outlets.add(new OutletCharPtr32(o.getInstanceName(), o.getInstanceName()));
             }
             for (ParameterInstance p : o.getParameterInstances()) {
                 if (p.isOnParent()) {
@@ -1495,7 +1572,7 @@ public class Patch {
                 + "}\n";
         ao.sKRateCode = "";
         for (AxoObjectInstanceAbstract o : objectinstances) {
-            if (o.typeName.equals("patch/outlet f") || o.typeName.equals("patch/outlet i") || o.typeName.equals("patch/outlet b")) {
+            if (o.typeName.equals("patch/outlet f") || o.typeName.equals("patch/outlet i")  || o.typeName.equals("patch/outlet string")) {
                 ao.sKRateCode += "   outlet_" + o.getLegalName() + " = 0;\n";
             } else if (o.typeName.equals("patch/outlet a")) {
                 ao.sKRateCode += "{\n"
@@ -1508,7 +1585,7 @@ public class Patch {
 
         for (AxoObjectInstanceAbstract o : objectinstances) {
             if (o.typeName.equals("inlet") || o.typeName.equals("inlet_i") || o.typeName.equals("inlet_b")
-                    || o.typeName.equals("patch/inlet f") || o.typeName.equals("patch/inlet i") || o.typeName.equals("patch/inlet b")) {
+                    || o.typeName.equals("patch/inlet f") || o.typeName.equals("patch/inlet i") || o.typeName.equals("patch/inlet b") || o.typeName.equals("patch/inlet string")) {
                 ao.sKRateCode += "   getVoices()[vi]." + o.getCInstanceName() + "_i._inlet = inlet_" + o.getLegalName() + ";\n";
             } else if (o.typeName.equals("inlet~") || o.typeName.equals("patch/inlet a")) {
                 ao.sKRateCode += "{int j; for(j=0;j<BUFSIZE;j++) getVoices()[vi]." + o.getCInstanceName() + "_i._inlet[j] = inlet_" + o.getLegalName() + "[j];}\n";
@@ -1518,7 +1595,8 @@ public class Patch {
         for (AxoObjectInstanceAbstract o : objectinstances) {
             if (o.typeName.equals("outlet") || o.typeName.equals("patch/outlet f")
                     || o.typeName.equals("patch/outlet i")
-                    || o.typeName.equals("patch/outlet b")) {
+                    || o.typeName.equals("patch/outlet b")
+                    || o.typeName.equals("patch/outlet string")) {
                 ao.sKRateCode += "   outlet_" + o.getLegalName() + " += getVoices()[vi]." + o.getCInstanceName() + "_i._outlet;\n";
             } else if (o.typeName.equals("patch/outlet a")) {
                 ao.sKRateCode += "{\n"
