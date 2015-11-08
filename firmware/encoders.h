@@ -49,9 +49,9 @@
 //#define BUTTON7_PIN  GPIO_Pin_1
 //#define BUTTON7_PORT GPIOB
 
-#define ENC1_0_PIN  9
+#define ENC1_0_PIN  10
 #define ENC1_0_PORT GPIOE
-#define ENC1_2_PIN  10
+#define ENC1_2_PIN  9
 #define ENC1_2_PORT GPIOE
 /*
 #define ENC2_0_PIN  GPIO_Pin_2
