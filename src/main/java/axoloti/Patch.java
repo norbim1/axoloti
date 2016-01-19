@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2013, 2014, 2015 Johannes Taelman
+ * Copyright (C) 2013 - 2016 Johannes Taelman
  *
  * This file is part of Axoloti.
  *
@@ -325,11 +325,11 @@ public class Patch {
 
     public Net AddConnection(InletInstance il, OutletInstance ol) {
         if (!IsLocked()) {
-            if (il.axoObj.patch != this) {
+            if (il.GetObjectInstance().patch != this) {
                 Logger.getLogger(Patch.class.getName()).log(Level.INFO, "can't connect: different patch");
                 return null;
             }
-            if (ol.axoObj.patch != this) {
+            if (ol.GetObjectInstance().patch != this) {
                 Logger.getLogger(Patch.class.getName()).log(Level.INFO, "can't connect: different patch");
                 return null;
             }
@@ -388,11 +388,11 @@ public class Patch {
                 Logger.getLogger(Patch.class.getName()).log(Level.INFO, "can't connect: same inlet");
                 return null;
             }
-            if (il.axoObj.patch != this) {
+            if (il.GetObjectInstance().patch != this) {
                 Logger.getLogger(Patch.class.getName()).log(Level.INFO, "can't connect: different patch");
                 return null;
             }
-            if (ol.axoObj.patch != this) {
+            if (ol.GetObjectInstance().patch != this) {
                 Logger.getLogger(Patch.class.getName()).log(Level.INFO, "can't connect: different patch");
                 return null;
             }
@@ -695,7 +695,7 @@ public class Patch {
 
     public HashSet<String> getIncludes() {
         HashSet<String> includes = new HashSet<String>();
-        if(controllerinstance != null) {
+        if (controllerinstance != null) {
             Set<String> i = controllerinstance.getType().GetIncludes();
             if (i != null) {
                 includes.addAll(i);
@@ -707,7 +707,7 @@ public class Patch {
                 includes.addAll(i);
             }
         }
-        
+
         return includes;
     }
 
@@ -753,8 +753,8 @@ public class Patch {
         c += "    static const uint32_t NMODULATIONSOURCES = " + settings.GetNModulationSources() + ";\n";
         c += "    static const uint32_t NMODULATIONTARGETS = " + settings.GetNModulationTargetsPerSource() + ";\n";
         return c;
-    }    
-    
+    }
+
     String GenerateObjectCode(String classname, boolean enableOnParent, String OnParentAccess) {
         String c = "";
         {
@@ -769,11 +769,11 @@ public class Patch {
             c += "/* parameter instance indices */\n";
             int k = 0;
             for (ParameterInstance p : ParameterInstances) {
-                c += "static const int PARAM_INDEX_" + p.axoObj.getLegalName() + "_" + p.getLegalName() + " = " + k + ";\n";
+                c += "static const int PARAM_INDEX_" + p.GetObjectInstance().getLegalName() + "_" + p.getLegalName() + " = " + k + ";\n";
                 k++;
             }
         }
-        c +="/* controller classes */\n";
+        c += "/* controller classes */\n";
         if (controllerinstance != null) {
             c += controllerinstance.GenerateClass(classname, OnParentAccess, enableOnParent);
         }
@@ -781,7 +781,7 @@ public class Patch {
         for (AxoObjectInstanceAbstract o : objectinstances) {
             c += o.GenerateClass(classname, OnParentAccess, enableOnParent);
         }
-        c +="/* controller instances */\n";
+        c += "/* controller instances */\n";
         if (controllerinstance != null) {
             String s = controllerinstance.getCInstanceName();
             if (!s.isEmpty()) {
@@ -990,6 +990,7 @@ public class Patch {
         c += "}\n\n";
         return c;
     }
+
     String GenerateDSPCodePlusPlusSub(String ClassName, boolean enableOnParent) {
         String c = "";
         c += "//--------- <nets> -----------//\n";
@@ -1007,14 +1008,14 @@ public class Patch {
         c += "  static const int32buffer zerobuffer = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};\n";
         c += "  int32buffer UNCONNECTED_OUTPUT_BUFFER;\n";
         c += "//--------- </zero> ----------//\n";
-        
+
         c += "//--------- <controller calls> ----------//\n";
-        if(controllerinstance != null) {
+        if (controllerinstance != null) {
             c += GenerateDSPCodePlusPlusSubObj(controllerinstance, ClassName, enableOnParent);
         }
         c += "//--------- <object calls> ----------//\n";
         for (AxoObjectInstanceAbstract o : objectinstances) {
-            c += GenerateDSPCodePlusPlusSubObj(o,ClassName, enableOnParent);
+            c += GenerateDSPCodePlusPlusSubObj(o, ClassName, enableOnParent);
         }
         c += "//--------- </object calls> ----------//\n";
 
@@ -1033,7 +1034,7 @@ public class Patch {
         return c;
     }
 
-    String GenerateDSPCodePlusPlusSubObj(AxoObjectInstanceAbstract o,String ClassName, boolean enableOnParent) {
+    String GenerateDSPCodePlusPlusSubObj(AxoObjectInstanceAbstract o, String ClassName, boolean enableOnParent) {
         String c = "";
         String s = o.getCInstanceName();
         if (s.isEmpty()) {
@@ -1050,14 +1051,14 @@ public class Patch {
             if ((n != null) && (n.isValidNet())) {
                 if (i.GetDataType().equals(n.GetDataType())) {
                     if (n.NeedsLatch()
-                            && (objectinstances.indexOf(n.source.get(0).axoObj) >= objectinstances.indexOf(o))) {
+                            && (objectinstances.indexOf(n.source.get(0).GetObjectInstance()) >= objectinstances.indexOf(o))) {
                         c += n.CName() + "Latch";
                     } else {
                         c += n.CName();
                     }
                 } else {
                     if (n.NeedsLatch()
-                            && (objectinstances.indexOf(n.source.get(0).axoObj) >= objectinstances.indexOf(o))) {
+                            && (objectinstances.indexOf(n.source.get(0).GetObjectInstance()) >= objectinstances.indexOf(o))) {
                         c += n.GetDataType().GenerateConversionToType(i.GetDataType(), n.CName() + "Latch");
                     } else {
                         c += n.GetDataType().GenerateConversionToType(i.GetDataType(), n.CName());
@@ -1248,12 +1249,12 @@ public class Patch {
                 x = objs.get(0);
             }
             if (x != null) {
-                controllerinstance = x.CreateInstance(null,"ctrl0x123",new Point(0,0));
+                controllerinstance = x.CreateInstance(null, "ctrl0x123", new Point(0, 0));
             } else {
                 Logger.getLogger(Patch.class.getName()).log(Level.INFO, "Unable to created controller for : {0}", cobjstr);
             }
         }
-                
+
         CreateIID();
         SortByPosition();
         String c = "extern \"C\" { \n";
@@ -1360,7 +1361,7 @@ public class Patch {
             } else if (o.typeName.equals("patch/inlet a")) {
                 ao.sKRateCode += "   for(i=0;i<BUFSIZE;i++) " + o.getCInstanceName() + "_i._inlet[i] = inlet_" + o.getLegalName() + "[i];\n";
             }
-            
+
         }
         ao.sKRateCode += GenerateDSPCodePlusPlusSub("attr_parent", true);
         for (AxoObjectInstanceAbstract o : objectinstances) {
@@ -1495,7 +1496,7 @@ public class Patch {
         ao.sLocalData += "/* parameter instance indices */\n";
         int k = 0;
         for (ParameterInstance p : ParameterInstances) {
-            ao.sLocalData += "static const int PARAM_INDEX_" + p.axoObj.getLegalName() + "_" + p.getLegalName() + " = " + k + ";\n";
+            ao.sLocalData += "static const int PARAM_INDEX_" + p.GetObjectInstance().getLegalName() + "_" + p.getLegalName() + " = " + k + ";\n";
             k++;
         }
 
@@ -2104,11 +2105,11 @@ public class Patch {
         // TODO: copy attributes tooo!
         Map<String, ParameterInstance> params = new TreeMap<String, ParameterInstance>();
         for (ParameterInstance p : obj.getParameterInstances()) {
-            params.put(p.name, p);
+            params.put(p.getName(), p);
         }
         Map<String, AttributeInstance> attrs = new TreeMap<String, AttributeInstance>();
         for (AttributeInstance a : obj.getAttributeInstances()) {
-            attrs.put(a.attributeName, a);
+            attrs.put(a.getName(), a);
         }
         Map<String, InletInstance> inlets = new TreeMap<String, InletInstance>();
         for (InletInstance il : obj.GetInletInstances()) {
@@ -2144,13 +2145,13 @@ public class Patch {
         AxoObjectInstanceAbstract newObj = AddObjectInstance(objType, obj.getLocation());
 
         for (ParameterInstance p : newObj.getParameterInstances()) {
-            ParameterInstance p1 = params.get(p.name);
+            ParameterInstance p1 = params.get(p.getName());
             if (p1 != null) {
                 p.CopyValueFrom(p1);
             }
         }
         for (AttributeInstance a : newObj.getAttributeInstances()) {
-            AttributeInstance a1 = attrs.get(a.attributeName);
+            AttributeInstance a1 = attrs.get(a.getName());
             if (a1 != null) {
                 a.CopyValueFrom(a1);
             }
@@ -2265,5 +2266,9 @@ public class Patch {
 
     public Rectangle getWindowPos() {
         return windowPos;
+    }
+
+    public PatchFrame getPatchframe() {
+        return patchframe;
     }
 }

@@ -64,7 +64,13 @@ axoloti_home ?= ..
 axoloti_firmware ?= ../firmware
 
 CHIBIOS = ${axoloti_release}/chibios
-FIRMWARE = ${axoloti_firmware}
+
+
+# theoretically should be this...., but CSRC expansion cannot cope with escape spaces
+#SPACE :=
+#SPACE +=
+#FIRMWARE=$(subst $(SPACE),\ ,${axoloti_firmware})
+FIRMWARE=.
 
 include board.mk
 include $(CHIBIOS)/os/hal/platforms/STM32F4xx/platform.mk
@@ -164,6 +170,7 @@ CSRC = $(PORTSRC) \
        ${FIRMWARE}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c \
        ${FIRMWARE}/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_hcd.c \
        ${FIRMWARE}/usbh_midi_core.c \
+       ${FIRMWARE}/usbh_vendor.c \
        ${FIRMWARE}/usbh_conf.c \
        ${FIRMWARE}/serial_midi.c \
        ${FIRMWARE}/bulk_usb.c \

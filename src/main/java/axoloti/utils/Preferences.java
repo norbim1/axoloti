@@ -256,7 +256,6 @@ public class Preferences {
             return;
         }
         this.FavouriteDir = favouriteDir;
-        MainFrame.mainframe.updateFavouriteMenu();
         SetDirty();
     }
 
