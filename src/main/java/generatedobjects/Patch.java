@@ -26,11 +26,13 @@ import axoloti.inlets.InletCharPtr32;
 import axoloti.inlets.InletFrac32;
 import axoloti.inlets.InletFrac32Buffer;
 import axoloti.inlets.InletInt32;
+import axoloti.inlets.InletInt32Pos;
 import axoloti.object.AxoObject;
 import axoloti.object.AxoObjectAbstract;
 import axoloti.object.AxoObjectComment;
 import axoloti.object.AxoObjectHyperlink;
 import axoloti.object.AxoObjectPatcher;
+import axoloti.object.AxoObjectPatcherObject;
 import axoloti.outlets.OutletBool32;
 import axoloti.outlets.OutletCharPtr32;
 import axoloti.outlets.OutletFrac32;
@@ -69,11 +71,13 @@ public class Patch extends gentools {
         WriteAxoObject(catName, Create_recvi());
         WriteAxoObject(catName, Create_recvb());
         WriteAxoObject(catName, CreateLoadPatch());
+        WriteAxoObject(catName, CreateLoadPatchIndexed());
         WriteAxoObject(catName, CreateLoadPatchFn());
 //        WriteAxoObject("patch", CreateInitMsg());
         WriteAxoObject(catName, CreatePolyIndex());
 
         WriteAxoObject(catName, CreatePatcher());
+        WriteAxoObject(catName, CreatePatcherObject());
         WriteAxoObject(catName, CreateCyclecounter());
 
     }
@@ -211,7 +215,7 @@ public class Patch extends gentools {
         o.SetProvidesModulationSource();
         o.sMidiCode = "if ((status == MIDI_CONTROL_CHANGE + attr_midichannel)&&(data1 == %cc%)) {\n"
                 + "  PExModulationSourceChange(\n"
-                + "    &parent->PExModulationSources[parent->MODULATOR_attr_name][0],\n"
+                + "    &parent->GetModulationTable()[parent->MODULATOR_attr_name*NMODULATIONTARGETS],\n"
                 + "    NMODULATIONTARGETS,\n"
                 + "    &parent->PExch[0],\n"
                 + "    &parent->PExModulationPrevVal[parent->polyIndex][parent->MODULATOR_attr_name],\n"
@@ -232,7 +236,7 @@ public class Patch extends gentools {
 //                + "   parent2->PExModulationSources[MODULATOR_%name%][i].PEx = 0;\n";
         o.sKRateCode = "if ((%trig%>0) && !ntrig) {\n"
                 + "  PExModulationSourceChange(\n"
-                + "    &parent->PExModulationSources[parent->MODULATOR_attr_name][0],\n"
+                + "    &parent->GetModulationTable()[parent->MODULATOR_attr_name*NMODULATIONTARGETS],\n"
                 + "    NMODULATIONTARGETS,\n"
                 + "    &parent->PExch[0],\n"
                 + "    &parent->PExModulationPrevVal[parent->polyIndex][parent->MODULATOR_attr_name],\n"
@@ -275,6 +279,17 @@ public class Patch extends gentools {
         return o;
     }
 
+    static AxoObject CreateLoadPatchIndexed() {
+        AxoObject o = new AxoObject("load i", "load a patch from sdcard, index in patch bank file");
+        o.inlets.add(new InletInt32Pos("i", "index"));
+        o.inlets.add(new InletBool32Rising("trig", "trigger"));
+        o.sLocalData = "int ntrig;\n";
+        o.sInitCode = "ntrig = 1;\n";
+        o.sKRateCode = "   if ((%trig%>0) && !ntrig) {LoadPatchIndexed(inlet_i); ntrig=1;}\n"
+                + "   else if (!(%trig%>0)) ntrig=0;\n";
+        return o;
+    }    
+    
     static AxoObject CreateLoadPatchFn() {
         AxoObject o = new AxoObject("load fn", "load a patch from sdcard");
         o.inlets.add(new InletBool32Rising("trig", "trigger"));
@@ -305,6 +320,11 @@ public class Patch extends gentools {
         return o;
     }
 
+    static AxoObject CreatePatcherObject() {
+        AxoObject o = new AxoObjectPatcherObject("object", "Object stored in the patch document (IN DEVELOPMENT!)");
+        return o;
+    }   
+    
     static AxoObject CreateCyclecounter() {
         AxoObject o = new AxoObject("cyclecounter", "Outputs the cpu clock cycle counter, a 32bit integer incrementing on every clock cycle. Useful for benchmarking objects.");
         o.outlets.add(new OutletInt32("t", "cpu time in ticks"));
