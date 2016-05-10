@@ -38,12 +38,16 @@ public class QCmdStart implements QCmdSerialTask {
 
     @Override
     public String GetStartMessage() {
-        return "Start starting patch";
+        return "Starting patch...";
     }
 
     @Override
     public String GetDoneMessage() {
         return "Done starting patch";
+    }
+
+    public String GetTimeOutMessage() {
+        return "patch start taking too long, disconnecting";
     }
 
     @Override
@@ -56,7 +60,7 @@ public class QCmdStart implements QCmdSerialTask {
         if (connection.WaitSync(patch_start_timeout)) {
             return this;
         } else {
-            Logger.getLogger(getClass().getName()).log(Level.SEVERE, "patch start taking too long, disconnecting");
+            Logger.getLogger(getClass().getName()).log(Level.SEVERE, GetTimeOutMessage());
             return new QCmdDisconnect();
         }
     }

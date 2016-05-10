@@ -191,8 +191,14 @@ int main(void) {
 
 #if ((BOARD_AXOLOTI_V03)||(BOARD_AXOLOTI_V05))
     sdcard_attemptMountIfUnmounted();
-    if (fs_ready && !palReadPad(SW2_PORT, SW2_PIN)) // button S2 not pressed
-      sdcard_loadPatch("0:start.bin");
+    if (fs_ready && !palReadPad(SW2_PORT, SW2_PIN)){
+      // button S2 not pressed
+      FRESULT res;
+//      res = f_stat("/start.bin", NULL);
+//      if (res == FR_OK) {
+        LoadPatch("/start.bin");
+//      }
+    }
 #endif
 
     // if no patch booting or running yet

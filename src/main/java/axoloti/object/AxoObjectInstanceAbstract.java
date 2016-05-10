@@ -20,6 +20,7 @@ package axoloti.object;
 import axoloti.MainFrame;
 import axoloti.Patch;
 import axoloti.PatchGUI;
+import axoloti.SDFileReference;
 import axoloti.attribute.AttributeInstance;
 import axoloti.inlets.InletInstance;
 import axoloti.outlets.OutletInstance;
@@ -60,6 +61,7 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
 
     @Attribute(name = "type")
     public String typeName;
+    @Deprecated
     @Attribute(name = "sha", required = false)
     public String typeSHA;
     @Attribute(name = "uuid", required = false)
@@ -120,12 +122,8 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
 
             System.out.println(rPath);
             typeName = rPath;
-//            File f = new File();
-//            f.ge
-//            typeName = 
         }
 
-        typeSHA = type.getSHA();
         typeUUID = type.getUUID();
         this.InstanceName = InstanceName1;
         this.x = location.x;
@@ -143,6 +141,7 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
 
     public void setType(AxoObjectAbstract type) {
         this.type = type;
+        typeUUID = type.getUUID();
     }
 
     public void setInstanceName(String InstanceName) {
@@ -183,13 +182,6 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
                 typeName = type.id;
             }
         }
-        if ((type == null) && (typeSHA != null)) {
-            type = MainFrame.axoObjects.GetAxoObjectFromSHA(typeSHA);
-            if (type != null) {
-                System.out.println("restored from SHA:" + type.id);
-                typeName = type.id;
-            }
-        }
         if (type == null) {
             ArrayList<AxoObjectAbstract> types = MainFrame.axoObjects.GetAxoObjectFromName(typeName, patch.GetCurrentWorkingDirectory());
             if (types == null) {
@@ -204,7 +196,6 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
                     type = aou.Load();
                     return (AxoObject) type;
                 }
-                typeSHA = type.getSHA();
             }
         }
         return type;
@@ -614,4 +605,12 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
     @Override
     public void ObjectModified(Object src) {
     }
+
+    public ArrayList<SDFileReference> GetDependendSDFiles() {
+        return null;
+    }
+
+    public boolean isTypeWasAmbiguous() {
+        return typeWasAmbiguous;
+    }       
 }

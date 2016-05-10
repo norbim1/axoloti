@@ -37,6 +37,8 @@ public class AxoObjectInstancePatcher extends AxoObjectInstance {
     @Element(name = "subpatch")
     PatchGUI pg;
 
+    private ButtonComponent BtnUpdate;
+
     public AxoObjectInstancePatcher() {
     }
 
@@ -74,6 +76,22 @@ public class AxoObjectInstancePatcher extends AxoObjectInstance {
         validate();
     }
 
+    @Override
+    public void Unlock() {
+        super.Unlock();
+        if (BtnUpdate != null) {
+            BtnUpdate.setEnabled(true);
+        }
+    }
+
+    @Override
+    public void Lock() {
+        super.Lock();
+        if (BtnUpdate != null) {
+            BtnUpdate.setEnabled(false);
+        }
+    }
+
     public void edit() {
         if (pg == null) {
             pg = new PatchGUI();
@@ -101,7 +119,7 @@ public class AxoObjectInstancePatcher extends AxoObjectInstance {
             }
         });
         add(BtnEdit);
-        ButtonComponent BtnUpdate = new ButtonComponent("update");
+        BtnUpdate = new ButtonComponent("update");
         BtnUpdate.setAlignmentX(LEFT_ALIGNMENT);
         BtnUpdate.setAlignmentY(TOP_ALIGNMENT);
         BtnUpdate.addActListener(new ActListener() {

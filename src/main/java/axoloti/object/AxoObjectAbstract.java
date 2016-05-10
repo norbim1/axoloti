@@ -19,6 +19,7 @@ package axoloti.object;
 
 import axoloti.Modulator;
 import axoloti.Patch;
+import axoloti.Version;
 import axoloti.inlets.Inlet;
 import axoloti.outlets.Outlet;
 import java.awt.Point;
@@ -30,13 +31,15 @@ import org.simpleframework.xml.Element;
 import org.simpleframework.xml.ElementList;
 import org.simpleframework.xml.ElementListUnion;
 import org.simpleframework.xml.Root;
+import org.simpleframework.xml.core.Complete;
+import org.simpleframework.xml.core.Persist;
 
 /**
  *
  * @author Johannes Taelman
  */
 @Root(name = "objdef")
-public abstract class AxoObjectAbstract implements Comparable {
+public abstract class AxoObjectAbstract implements Comparable, Cloneable {
 
     @Attribute
     public String id;
@@ -44,9 +47,11 @@ public abstract class AxoObjectAbstract implements Comparable {
     @Attribute(required = false)
     String uuid;
 
+    @Deprecated
     @Attribute(required = false)
     String sha;
 
+    @Deprecated
     @ElementListUnion({
         @ElementList(entry = "upgradeSha", type = String.class, inline = true, required = false),})
     HashSet<String> upgradeSha;
@@ -63,13 +68,31 @@ public abstract class AxoObjectAbstract implements Comparable {
     @Element(name = "license", required = false)
     public String sLicense;
     public String sPath;
-
+    
+    
+    @Complete 
+    public void Complete() {
+        // called after deserialializtion
+        this.sha = null;
+        this.upgradeSha = null;
+    }
+    
+    @Persist
+    public void Persist() {
+        // called prior to serialization
+    }
+    
+    
     public AxoObjectAbstract() {
+        this.sha = null;
+        this.upgradeSha = null;
     }
 
     public AxoObjectAbstract(String id, String sDescription) {
         this.sDescription = sDescription;
         this.id = id;
+        this.sha = null;
+        this.upgradeSha = null;
     }
 
     Inlet GetInlet(String n) {
@@ -120,21 +143,12 @@ public abstract class AxoObjectAbstract implements Comparable {
         return "noname";
     }
 
-    public String getSHA() {
-        if (sha == null) {
-            GenerateSHA();
-        }
-        return sha;
-    }
-
     public String getUUID() {
         if (uuid == null) {
             uuid = GenerateUUID();
         }
         return uuid;
     }
-
-    public abstract String GenerateSHA();
 
     public HashSet<String> GetIncludes() {
         return null;
@@ -164,19 +178,8 @@ public abstract class AxoObjectAbstract implements Comparable {
 
     public abstract String GenerateUUID();
 
-    public void addUpgradeSHA(String s) {
-        if (upgradeSha == null) {
-            upgradeSha = new HashSet<String>();
-        }
-        upgradeSha.add(s);
-    }
-
-    public void setSHA(String sha) {
-        this.sha = sha;
-    }
-
-    public HashSet<String> getUpgradeSha() {
-        return upgradeSha;
+    public void setUUID(String uuid) {
+        this.uuid = uuid;
     }
 
     public void FireObjectModified(Object src) {
@@ -187,4 +190,5 @@ public abstract class AxoObjectAbstract implements Comparable {
 
     public void removeObjectModifiedListener(ObjectModifiedListener oml) {
     }
+
 }

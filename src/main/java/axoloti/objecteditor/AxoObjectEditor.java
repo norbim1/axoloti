@@ -19,20 +19,24 @@ package axoloti.objecteditor;
 
 import axoloti.DocumentWindow;
 import axoloti.DocumentWindowList;
+import axoloti.MainFrame;
 import axoloti.object.AxoObject;
 import axoloti.object.AxoObjectInstance;
 import axoloti.object.ObjectModifiedListener;
-import static generatedobjects.gentools.WriteAxoObject;
+import axoloti.utils.AxolotiLibrary;
 import java.awt.BorderLayout;
 import java.awt.Point;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.DefaultListModel;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 import org.fife.ui.rsyntaxtextarea.SyntaxConstants;
@@ -44,16 +48,18 @@ import org.simpleframework.xml.core.Persister;
  *
  * @author Johannes Taelman
  */
-public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectModifiedListener {
-    
-    final AxoObject obj;
+public final class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectModifiedListener {
+
+    AxoObject editObj;
+    final AxoObject origObj;
     private final RSyntaxTextArea jTextAreaLocalData;
     private final RSyntaxTextArea jTextAreaInitCode;
     private final RSyntaxTextArea jTextAreaKRateCode;
     private final RSyntaxTextArea jTextAreaSRateCode;
     private final RSyntaxTextArea jTextAreaDisposeCode;
     private final RSyntaxTextArea jTextAreaMidiCode;
-    
+    boolean modified;
+
     static RSyntaxTextArea initCodeEditor(JPanel p) {
         RSyntaxTextArea rsta = new RSyntaxTextArea(20, 60);
         rsta.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_CPLUSPLUS);
@@ -64,55 +70,109 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         rsta.setVisible(true);
         return rsta;
     }
-    
-    public AxoObjectEditor(final AxoObject obj) {
+
+    public AxoObjectEditor(final AxoObject origObj, boolean editOriginal) {
         initComponents();
+        fileMenu1.initComponents();
         DocumentWindowList.RegisterWindow(this);
-        obj.addObjectModifiedListener(this);
         jTextAreaLocalData = initCodeEditor(jPanelLocalData);
         jTextAreaInitCode = initCodeEditor(jPanelInitCode);
         jTextAreaKRateCode = initCodeEditor(jPanelKRateCode2);
         jTextAreaSRateCode = initCodeEditor(jPanelSRateCode);
         jTextAreaDisposeCode = initCodeEditor(jPanelDisposeCode);
-        jTextAreaMidiCode = initCodeEditor(jPanelMidiCode);
+        jTextAreaMidiCode = initCodeEditor(jPanelMidiCode2);
         setIconImage(new ImageIcon(getClass().getResource("/resources/axoloti_icon.png")).getImage());
-        setTitle(obj.id);
-        this.obj = obj;
-        
-        jLabelName.setText(obj.getCName());
-        jTextFieldAuthor.setText(obj.sAuthor);
-        jTextFieldLicense.setText(obj.sLicense);
-        jTextDesc.setText(obj.sDescription);
-        
-        inletDefinitionsEditor1.initComponents(obj);
-        outletDefinitionsEditorPanel1.initComponents(obj);
-        paramDefinitionsEditorPanel1.initComponents(obj);
-        attributeDefinitionsEditorPanel1.initComponents(obj);
-        displayDefinitionsEditorPanel1.initComponents(obj);
-        
-        if (obj.includes != null) {
-            for (String i : obj.includes) {
+        setTitle(origObj.id);
+        this.origObj = origObj;
+        if (editOriginal) {
+            this.editObj = origObj;
+        }
+        else {
+            try {
+                this.editObj = origObj.clone();
+            } catch (CloneNotSupportedException ex) {
+                Logger.getLogger(AxoObjectEditor.class.getName()).log(Level.SEVERE, null, ex);
+                this.editObj = new AxoObject();
+            }
+        }
+        editObj.addObjectModifiedListener(this);
+
+        jLabelName.setText(editObj.getCName());
+        jTextFieldAuthor.setText(editObj.sAuthor);
+        jTextFieldAuthor.addFocusListener(new FocusListener() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (editObj.sAuthor == null || !editObj.sAuthor.equals(jTextFieldAuthor.getText())) {
+                    editObj.sAuthor = jTextFieldAuthor.getText().trim();
+                    FireObjectModified();
+                }
+            }
+
+            @Override
+            public void focusGained(FocusEvent e) {
+            }
+        });
+
+        jTextFieldLicense.setText(editObj.sLicense);
+        jTextFieldLicense.addFocusListener(new FocusListener() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (editObj.sLicense == null || !editObj.sLicense.equals(jTextFieldLicense.getText())) {
+                    editObj.sLicense = jTextFieldLicense.getText().trim();
+                    FireObjectModified();
+                }
+            }
+
+            @Override
+            public void focusGained(FocusEvent e) {
+            }
+        });
+        jTextDesc.setText(editObj.sDescription);
+        jTextDesc.addFocusListener(new FocusListener() {
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (editObj.sLicense == null || !editObj.sLicense.equals(jTextDesc.getText())) {
+                    editObj.sDescription = jTextDesc.getText().trim();
+                    FireObjectModified();
+                }
+            }
+
+            @Override
+            public void focusGained(FocusEvent e) {
+            }
+        });
+
+        jLabelMidiPrototype.setText(AxoObjectInstance.MidiHandlerFunctionHeader);
+
+        inletDefinitionsEditor1.initComponents(editObj);
+        outletDefinitionsEditorPanel1.initComponents(editObj);
+        paramDefinitionsEditorPanel1.initComponents(editObj);
+        attributeDefinitionsEditorPanel1.initComponents(editObj);
+        displayDefinitionsEditorPanel1.initComponents(editObj);
+
+        if (editObj.includes != null) {
+            for (String i : editObj.includes) {
                 ((DefaultListModel) jListIncludes.getModel()).addElement(i);
             }
         }
-        
-        if (obj.depends != null) {
-            for (String i : obj.depends) {
+
+        if (editObj.depends != null) {
+            for (String i : editObj.depends) {
                 ((DefaultListModel) jListDepends.getModel()).addElement(i);
             }
         }
-        
+
         FocusListener fl = new FocusListener() {
             @Override
             public void focusGained(FocusEvent e) {
             }
-            
+
             @Override
             public void focusLost(FocusEvent e) {
-                applyChanges();
+                applyChangesToEdit();
             }
         };
-        
+
         jTextAreaLocalData.addFocusListener(fl);
         jTextAreaInitCode.addFocusListener(fl);
         jTextAreaKRateCode.addFocusListener(fl);
@@ -121,44 +181,119 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         jTextAreaMidiCode.addFocusListener(fl);
         rSyntaxTextAreaXML.setEditable(false);
         FireObjectModified();
+        modified = false;
+
+        // is it from the factory?
+        AxolotiLibrary sellib = null;
+        for (AxolotiLibrary lib : MainFrame.prefs.getLibraries()) {
+            if (editObj.sPath != null && editObj.sPath.startsWith(lib.getLocalLocation())) {
+
+                if (sellib == null || sellib.getLocalLocation().length() < lib.getLocalLocation().length()) {
+                    sellib = lib;
+                }
+            }
+        }
+        if (sellib != null) {
+            jMenuItemSave.setEnabled(!sellib.isReadOnly());
+            jMenuItemApply.setEnabled(!sellib.isReadOnly());
+        }
+        // embedded object
+        if (editObj.sPath == null) {
+            jMenuItemSave.setEnabled(false);
+        }
     }
-    
-    void applyChanges() {
-        obj.sLocalData = jTextAreaLocalData.getText();
-        obj.sInitCode = jTextAreaInitCode.getText();
-        obj.sKRateCode = jTextAreaKRateCode.getText();
-        obj.sSRateCode = jTextAreaSRateCode.getText();
-        obj.sDisposeCode = jTextAreaDisposeCode.getText();
-        obj.sMidiCode = jTextAreaMidiCode.getText();
+
+    void applyChangesToEdit() {
+        editObj.sLocalData = jTextAreaLocalData.getText();
+        editObj.sInitCode = jTextAreaInitCode.getText();
+        editObj.sKRateCode = jTextAreaKRateCode.getText();
+        editObj.sSRateCode = jTextAreaSRateCode.getText();
+        editObj.sDisposeCode = jTextAreaDisposeCode.getText();
+        editObj.sMidiCode = jTextAreaMidiCode.getText();
     }
-    
+
+    void applyChangesToOriginal() {
+        applyChangesToEdit();
+        origObj.sAuthor = editObj.sAuthor;
+        origObj.sDescription = editObj.sDescription;
+        origObj.sLicense = editObj.sLicense;
+        origObj.helpPatch = editObj.helpPatch;
+        origObj.sLocalData = editObj.sLocalData;
+        origObj.sInitCode = editObj.sInitCode;
+        origObj.sKRateCode = editObj.sKRateCode;
+        origObj.sSRateCode = editObj.sSRateCode;
+        origObj.sDisposeCode = editObj.sDisposeCode;
+        origObj.sMidiCode = editObj.sMidiCode;
+        origObj.inlets = editObj.inlets;
+        origObj.outlets = editObj.outlets;
+        origObj.includes = editObj.includes;
+        origObj.depends = editObj.depends;
+        origObj.displays = editObj.displays;
+        origObj.attributes = editObj.attributes;
+        origObj.params = editObj.params;
+    }
+
     void FireObjectModified() {
-        jTextAreaLocalData.setText(obj.sLocalData);
-        jTextAreaInitCode.setText(obj.sInitCode);
-        jTextAreaKRateCode.setText(obj.sKRateCode);
-        jTextAreaSRateCode.setText(obj.sSRateCode);
-        jTextAreaDisposeCode.setText(obj.sDisposeCode);
-        jTextAreaMidiCode.setText(obj.sMidiCode);
+        modified = true;
+        jTextAreaLocalData.setText(editObj.sLocalData);
+        jTextAreaInitCode.setText(editObj.sInitCode);
+        jTextAreaKRateCode.setText(editObj.sKRateCode);
+        jTextAreaSRateCode.setText(editObj.sSRateCode);
+        jTextAreaDisposeCode.setText(editObj.sDisposeCode);
+        jTextAreaMidiCode.setText(editObj.sMidiCode);
         Serializer serializer = new Persister();
         ByteArrayOutputStream os = new ByteArrayOutputStream(2048);
         try {
-            serializer.write(obj, os);
+            serializer.write(editObj, os);
         } catch (Exception ex) {
             Logger.getLogger(AxoObjectEditor.class.getName()).log(Level.SEVERE, null, ex);
         }
         rSyntaxTextAreaXML.setText(os.toString());
         rSyntaxTextAreaXML.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_XML);
         rSyntaxTextAreaXML.setCodeFoldingEnabled(true);
-        
-        AxoObjectInstance obji = obj.CreateInstance(null, "test", new Point(0, 0));
-        jPanelKRateCode1.setText(obji.GenerateDoFunctionPlusPlus("", "", false));        
+
+        AxoObjectInstance obji = editObj.CreateInstance(null, "test", new Point(0, 0));
+        jPanelKRateCode1.setText(obji.GenerateDoFunctionPlusPlus("", "", false));
         jPanelKRateCode1.setFont(jTextAreaKRateCode.getFont());
     }
-    
+
     public void Close() {
+        // warn if changes, and its not an embedded object
+
+        if (modified && editObj.sPath != null) {
+            if(jMenuItemSave.isEnabled()) {
+                int result = JOptionPane.showConfirmDialog(this, "Unsaved changes, do you want to save?",
+                    "Close", JOptionPane.YES_NO_CANCEL_OPTION);
+                switch(result) {
+                    case JOptionPane.CANCEL_OPTION:
+                        return;
+                    case JOptionPane.YES_OPTION:
+                        jMenuItemSaveActionPerformed(null);
+                        // fall through to close
+                    case JOptionPane.NO_OPTION:
+                    default:
+                        ;
+                }
+            } else {
+                int result = JOptionPane.showConfirmDialog(this, "Unsaved changes, do you want to add to a library?",
+                    "Close", JOptionPane.YES_NO_CANCEL_OPTION);
+                switch(result) {
+                    case JOptionPane.CANCEL_OPTION:
+                        return;
+                    case JOptionPane.YES_OPTION:
+                        jMenuItemAddToLibraryActionPerformed(null);
+                        // this will currently call close(), but mod = false
+                        return;
+                    case JOptionPane.NO_OPTION:
+                    default:
+                        ;
+                }
+            }
+        }
         DocumentWindowList.UnregisterWindow(this);
-        obj.removeObjectModifiedListener(this);
+        editObj.removeObjectModifiedListener(this);
         dispose();
+        origObj.CloseEditor();
     }
 
     /**
@@ -171,8 +306,6 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
     private void initComponents() {
 
         jInternalFrame1 = new javax.swing.JInternalFrame();
-        jLabel1 = new javax.swing.JLabel();
-        jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
         jPanel1 = new javax.swing.JPanel();
         jTabbedPane1 = new javax.swing.JTabbedPane();
@@ -207,14 +340,20 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         jPanelSRateCode = new javax.swing.JPanel();
         jPanelDisposeCode = new javax.swing.JPanel();
         jPanelMidiCode = new javax.swing.JPanel();
+        jLabelMidiPrototype = new javax.swing.JLabel();
+        jPanelMidiCode2 = new javax.swing.JPanel();
         jPanelXML = new javax.swing.JPanel();
         jScrollPane6 = new javax.swing.JScrollPane();
         rSyntaxTextAreaXML = new org.fife.ui.rsyntaxtextarea.RSyntaxTextArea();
         jLabel2 = new javax.swing.JLabel();
         jMenuBar1 = new javax.swing.JMenuBar();
-        jMenuFile = new javax.swing.JMenu();
+        fileMenu1 = new axoloti.menus.FileMenu();
+        jSeparator1 = new javax.swing.JPopupMenu.Separator();
         jMenuItemSave = new javax.swing.JMenuItem();
+        jMenuItemAddToLibrary = new javax.swing.JMenuItem();
+        jMenuItemApply = new javax.swing.JMenuItem();
         windowMenu1 = new axoloti.menus.WindowMenu();
+        helpMenu1 = new axoloti.menus.HelpMenu();
 
         jInternalFrame1.setVisible(true);
 
@@ -230,25 +369,18 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         );
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+        setPreferredSize(new java.awt.Dimension(540, 400));
         addWindowListener(new java.awt.event.WindowAdapter() {
             public void windowClosing(java.awt.event.WindowEvent evt) {
                 formWindowClosing(evt);
             }
         });
         getContentPane().setLayout(new javax.swing.BoxLayout(getContentPane(), javax.swing.BoxLayout.PAGE_AXIS));
-
-        jLabel1.setText("This object editor is incomplete. The tabs for inlets, outlets, parameters, attributes are not editable. Bundles of multiple objects in one file are not supported.");
-        jLabel1.setVerifyInputWhenFocusTarget(false);
-        getContentPane().add(jLabel1);
-
-        jLabel3.setText("Only the code-editors work. Changes are applied only by (re-)enabling live on a patch. Changes propagate to all instances wihtout reloading.");
-        getContentPane().add(jLabel3);
         getContentPane().add(jLabel4);
 
         jPanel1.setPreferredSize(new java.awt.Dimension(640, 100));
         jPanel1.setLayout(new javax.swing.BoxLayout(jPanel1, javax.swing.BoxLayout.PAGE_AXIS));
 
-        jTabbedPane1.setTabLayoutPolicy(javax.swing.JTabbedPane.SCROLL_TAB_LAYOUT);
         jTabbedPane1.setTabPlacement(javax.swing.JTabbedPane.LEFT);
         jTabbedPane1.setPreferredSize(new java.awt.Dimension(640, 100));
 
@@ -266,6 +398,11 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         jPanel2.add(jLabel8);
 
         jTextFieldAuthor.setText("jTextField1");
+        jTextFieldAuthor.addFocusListener(new java.awt.event.FocusAdapter() {
+            public void focusLost(java.awt.event.FocusEvent evt) {
+                jTextFieldAuthorFocusLost(evt);
+            }
+        });
         jPanel2.add(jTextFieldAuthor);
 
         jLabel9.setText("License:");
@@ -313,11 +450,11 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         inletDefinitionsEditor1.setLayout(inletDefinitionsEditor1Layout);
         inletDefinitionsEditor1Layout.setHorizontalGroup(
             inletDefinitionsEditor1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 406, Short.MAX_VALUE)
+            .addGap(0, 466, Short.MAX_VALUE)
         );
         inletDefinitionsEditor1Layout.setVerticalGroup(
             inletDefinitionsEditor1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 323, Short.MAX_VALUE)
+            .addGap(0, 302, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("Inlets", inletDefinitionsEditor1);
@@ -326,11 +463,11 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         outletDefinitionsEditorPanel1.setLayout(outletDefinitionsEditorPanel1Layout);
         outletDefinitionsEditorPanel1Layout.setHorizontalGroup(
             outletDefinitionsEditorPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 406, Short.MAX_VALUE)
+            .addGap(0, 466, Short.MAX_VALUE)
         );
         outletDefinitionsEditorPanel1Layout.setVerticalGroup(
             outletDefinitionsEditorPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 323, Short.MAX_VALUE)
+            .addGap(0, 302, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("Outlets", outletDefinitionsEditorPanel1);
@@ -339,11 +476,11 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         attributeDefinitionsEditorPanel1.setLayout(attributeDefinitionsEditorPanel1Layout);
         attributeDefinitionsEditorPanel1Layout.setHorizontalGroup(
             attributeDefinitionsEditorPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 406, Short.MAX_VALUE)
+            .addGap(0, 466, Short.MAX_VALUE)
         );
         attributeDefinitionsEditorPanel1Layout.setVerticalGroup(
             attributeDefinitionsEditorPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 323, Short.MAX_VALUE)
+            .addGap(0, 302, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("Attributes", attributeDefinitionsEditorPanel1);
@@ -352,11 +489,11 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         paramDefinitionsEditorPanel1.setLayout(paramDefinitionsEditorPanel1Layout);
         paramDefinitionsEditorPanel1Layout.setHorizontalGroup(
             paramDefinitionsEditorPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 406, Short.MAX_VALUE)
+            .addGap(0, 466, Short.MAX_VALUE)
         );
         paramDefinitionsEditorPanel1Layout.setVerticalGroup(
             paramDefinitionsEditorPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 323, Short.MAX_VALUE)
+            .addGap(0, 302, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("Parameters", paramDefinitionsEditorPanel1);
@@ -365,11 +502,11 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         displayDefinitionsEditorPanel1.setLayout(displayDefinitionsEditorPanel1Layout);
         displayDefinitionsEditorPanel1Layout.setHorizontalGroup(
             displayDefinitionsEditorPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 406, Short.MAX_VALUE)
+            .addGap(0, 466, Short.MAX_VALUE)
         );
         displayDefinitionsEditorPanel1Layout.setVerticalGroup(
             displayDefinitionsEditorPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 323, Short.MAX_VALUE)
+            .addGap(0, 302, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("Displays", displayDefinitionsEditorPanel1);
@@ -378,11 +515,11 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         jPanelLocalData.setLayout(jPanelLocalDataLayout);
         jPanelLocalDataLayout.setHorizontalGroup(
             jPanelLocalDataLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 406, Short.MAX_VALUE)
+            .addGap(0, 466, Short.MAX_VALUE)
         );
         jPanelLocalDataLayout.setVerticalGroup(
             jPanelLocalDataLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 323, Short.MAX_VALUE)
+            .addGap(0, 302, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("Local Data", jPanelLocalData);
@@ -391,11 +528,11 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         jPanelInitCode.setLayout(jPanelInitCodeLayout);
         jPanelInitCodeLayout.setHorizontalGroup(
             jPanelInitCodeLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 406, Short.MAX_VALUE)
+            .addGap(0, 466, Short.MAX_VALUE)
         );
         jPanelInitCodeLayout.setVerticalGroup(
             jPanelInitCodeLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 323, Short.MAX_VALUE)
+            .addGap(0, 302, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("Init Code", jPanelInitCode);
@@ -409,11 +546,11 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         jPanelKRateCode2.setLayout(jPanelKRateCode2Layout);
         jPanelKRateCode2Layout.setHorizontalGroup(
             jPanelKRateCode2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 406, Short.MAX_VALUE)
+            .addGap(0, 466, Short.MAX_VALUE)
         );
         jPanelKRateCode2Layout.setVerticalGroup(
             jPanelKRateCode2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 309, Short.MAX_VALUE)
+            .addGap(0, 288, Short.MAX_VALUE)
         );
 
         jPanelKRateCode.add(jPanelKRateCode2);
@@ -424,11 +561,11 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         jPanelSRateCode.setLayout(jPanelSRateCodeLayout);
         jPanelSRateCodeLayout.setHorizontalGroup(
             jPanelSRateCodeLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 406, Short.MAX_VALUE)
+            .addGap(0, 466, Short.MAX_VALUE)
         );
         jPanelSRateCodeLayout.setVerticalGroup(
             jPanelSRateCodeLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 323, Short.MAX_VALUE)
+            .addGap(0, 302, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("S-rate Code", jPanelSRateCode);
@@ -437,25 +574,32 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         jPanelDisposeCode.setLayout(jPanelDisposeCodeLayout);
         jPanelDisposeCodeLayout.setHorizontalGroup(
             jPanelDisposeCodeLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 406, Short.MAX_VALUE)
+            .addGap(0, 466, Short.MAX_VALUE)
         );
         jPanelDisposeCodeLayout.setVerticalGroup(
             jPanelDisposeCodeLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 323, Short.MAX_VALUE)
+            .addGap(0, 302, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("Dispose Code", jPanelDisposeCode);
 
-        javax.swing.GroupLayout jPanelMidiCodeLayout = new javax.swing.GroupLayout(jPanelMidiCode);
-        jPanelMidiCode.setLayout(jPanelMidiCodeLayout);
-        jPanelMidiCodeLayout.setHorizontalGroup(
-            jPanelMidiCodeLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 406, Short.MAX_VALUE)
+        jPanelMidiCode.setLayout(new javax.swing.BoxLayout(jPanelMidiCode, javax.swing.BoxLayout.Y_AXIS));
+
+        jLabelMidiPrototype.setText("jLabel11");
+        jPanelMidiCode.add(jLabelMidiPrototype);
+
+        javax.swing.GroupLayout jPanelMidiCode2Layout = new javax.swing.GroupLayout(jPanelMidiCode2);
+        jPanelMidiCode2.setLayout(jPanelMidiCode2Layout);
+        jPanelMidiCode2Layout.setHorizontalGroup(
+            jPanelMidiCode2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 466, Short.MAX_VALUE)
         );
-        jPanelMidiCodeLayout.setVerticalGroup(
-            jPanelMidiCodeLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 323, Short.MAX_VALUE)
+        jPanelMidiCode2Layout.setVerticalGroup(
+            jPanelMidiCode2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 288, Short.MAX_VALUE)
         );
+
+        jPanelMidiCode.add(jPanelMidiCode2);
 
         jTabbedPane1.addTab("MIDI Code", jPanelMidiCode);
 
@@ -473,11 +617,11 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
         jPanelXML.setLayout(jPanelXMLLayout);
         jPanelXMLLayout.setHorizontalGroup(
             jPanelXMLLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane6, javax.swing.GroupLayout.DEFAULT_SIZE, 406, Short.MAX_VALUE)
+            .addComponent(jScrollPane6, javax.swing.GroupLayout.DEFAULT_SIZE, 466, Short.MAX_VALUE)
         );
         jPanelXMLLayout.setVerticalGroup(
             jPanelXMLLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(jScrollPane6, javax.swing.GroupLayout.DEFAULT_SIZE, 323, Short.MAX_VALUE)
+            .addComponent(jScrollPane6, javax.swing.GroupLayout.DEFAULT_SIZE, 302, Short.MAX_VALUE)
         );
 
         jTabbedPane1.addTab("XML", jPanelXML);
@@ -489,7 +633,8 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
 
         getContentPane().add(jPanel1);
 
-        jMenuFile.setText("File");
+        fileMenu1.setText("File");
+        fileMenu1.add(jSeparator1);
 
         jMenuItemSave.setText("Save");
         jMenuItemSave.addActionListener(new java.awt.event.ActionListener() {
@@ -497,20 +642,34 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
                 jMenuItemSaveActionPerformed(evt);
             }
         });
-        jMenuFile.add(jMenuItemSave);
+        fileMenu1.add(jMenuItemSave);
 
-        jMenuBar1.add(jMenuFile);
+        jMenuItemAddToLibrary.setText("Add to Library...");
+        jMenuItemAddToLibrary.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemAddToLibraryActionPerformed(evt);
+            }
+        });
+        fileMenu1.add(jMenuItemAddToLibrary);
+
+        jMenuItemApply.setText("Apply");
+        jMenuItemApply.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jMenuItemApplyActionPerformed(evt);
+            }
+        });
+        fileMenu1.add(jMenuItemApply);
+
+        jMenuBar1.add(fileMenu1);
         jMenuBar1.add(windowMenu1);
+
+        helpMenu1.setText("Help");
+        jMenuBar1.add(helpMenu1);
 
         setJMenuBar(jMenuBar1);
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
-
-    private void jMenuItemSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSaveActionPerformed
-        applyChanges();
-        WriteAxoObject(obj.sPath, obj);
-    }//GEN-LAST:event_jMenuItemSaveActionPerformed
 
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         Close();
@@ -520,26 +679,53 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
 
     }//GEN-LAST:event_jPanelXMLFocusGained
 
+    private void jTextFieldAuthorFocusLost(java.awt.event.FocusEvent evt) {//GEN-FIRST:event_jTextFieldAuthorFocusLost
+
+    }//GEN-LAST:event_jTextFieldAuthorFocusLost
+
+    private void jMenuItemSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSaveActionPerformed
+        applyChangesToOriginal();
+        origObj.FireObjectModified(this);
+        MainFrame.axoObjects.WriteAxoObject(editObj.sPath, editObj);
+        modified = false;
+    }//GEN-LAST:event_jMenuItemSaveActionPerformed
+
+    private void jMenuItemAddToLibraryActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAddToLibraryActionPerformed
+        applyChangesToEdit();
+        AddToLibraryDlg dlg = new AddToLibraryDlg(this, true, editObj);
+        dlg.setVisible(true);
+        modified = false; 
+        Close();
+    }//GEN-LAST:event_jMenuItemAddToLibraryActionPerformed
+
+    private void jMenuItemApplyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemApplyActionPerformed
+        applyChangesToOriginal();
+        origObj.FireObjectModified(this);
+        // dont clear modified, so they are still prompted to save.
+    }//GEN-LAST:event_jMenuItemApplyActionPerformed
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private axoloti.objecteditor.AttributeDefinitionsEditorPanel attributeDefinitionsEditorPanel1;
     private axoloti.objecteditor.DisplayDefinitionsEditorPanel displayDefinitionsEditorPanel1;
+    private axoloti.menus.FileMenu fileMenu1;
+    private axoloti.menus.HelpMenu helpMenu1;
     private axoloti.objecteditor.InletDefinitionsEditorPanel inletDefinitionsEditor1;
     private javax.swing.JInternalFrame jInternalFrame1;
-    private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
+    private javax.swing.JLabel jLabelMidiPrototype;
     private javax.swing.JLabel jLabelName;
     private javax.swing.JList jListDepends;
     private javax.swing.JList jListIncludes;
     private javax.swing.JMenuBar jMenuBar1;
-    private javax.swing.JMenu jMenuFile;
+    private javax.swing.JMenuItem jMenuItemAddToLibrary;
+    private javax.swing.JMenuItem jMenuItemApply;
     private javax.swing.JMenuItem jMenuItemSave;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
@@ -551,6 +737,7 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
     private javax.swing.JPanel jPanelKRateCode2;
     private javax.swing.JPanel jPanelLocalData;
     private javax.swing.JPanel jPanelMidiCode;
+    private javax.swing.JPanel jPanelMidiCode2;
     private javax.swing.JPanel jPanelOverview;
     private javax.swing.JPanel jPanelSRateCode;
     private javax.swing.JPanel jPanelXML;
@@ -558,6 +745,7 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
     private javax.swing.JScrollPane jScrollPane13;
     private javax.swing.JScrollPane jScrollPane4;
     private javax.swing.JScrollPane jScrollPane6;
+    private javax.swing.JPopupMenu.Separator jSeparator1;
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JTextArea jTextDesc;
     private javax.swing.JTextField jTextFieldAuthor;
@@ -572,15 +760,25 @@ public class AxoObjectEditor extends JFrame implements DocumentWindow, ObjectMod
     public JFrame GetFrame() {
         return this;
     }
-    
+
     @Override
     public boolean AskClose() {
         Close();
         return false; //TBC
     }
-    
+
     @Override
     public void ObjectModified(Object src) {
         FireObjectModified();
+    }
+
+    @Override
+    public File getFile() {
+        return null;
+    }
+
+    @Override
+    public ArrayList<DocumentWindow> GetChildDocuments() {
+        return null;
     }
 }

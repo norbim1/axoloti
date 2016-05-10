@@ -17,11 +17,14 @@
  */
 package axoloti.attribute;
 
+import axoloti.SDFileReference;
 import axoloti.atom.AtomInstance;
 import axoloti.attributedefinition.AxoAttribute;
 import axoloti.object.AxoObjectInstance;
 import static axoloti.utils.CharEscape.CharEscape;
 import components.LabelComponent;
+import java.io.File;
+import java.util.ArrayList;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 import org.simpleframework.xml.Attribute;
@@ -84,4 +87,7 @@ public abstract class AttributeInstance<T extends AxoAttribute> extends JPanel i
         return attr;
     }
 
+    public ArrayList<SDFileReference> GetDependendSDFiles() {
+        return null;
+    }
 }

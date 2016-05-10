@@ -161,7 +161,8 @@ void PExTransmit(void) {
           int v = (patchMeta.pPExch)[i].value;
           patchMeta.pPExch[i].signals &= ~0x01;
           PExMessage msg;
-          msg.header = 0x506F7841; //"AxoP"
+          msg.header = 0x516F7841; //"AxoQ"
+          msg.patchID = patchMeta.patchID;
           msg.index = i;
           msg.value = v;
           chSequentialStreamWrite((BaseSequentialStream * )&BDU1,
@@ -172,17 +173,17 @@ void PExTransmit(void) {
   }
 }
 
+char FileName[64];
+
 static FRESULT scan_files(char *path) {
   FRESULT res;
   FILINFO fno;
   DIR dir;
   int i;
   char *fn;
-
-#if _USE_LFN
-  fno.lfname = 0;
-  fno.lfsize = 0;
-#endif
+  char *msg = &((char*)fbuff)[64];
+  fno.lfname = &FileName[0];
+  fno.lfsize = sizeof(FileName);
   res = f_opendir(&dir, path);
   if (res == FR_OK) {
     i = strlen(path);
@@ -192,33 +193,45 @@ static FRESULT scan_files(char *path) {
         break;
       if (fno.fname[0] == '.')
         continue;
+#if _USE_LFN
+      fn = *fno.lfname ? fno.lfname : fno.fname;
+#else
       fn = fno.fname;
+#endif
+      if (fn[0] == '.')
+        continue;
+      if (fno.fattrib & AM_HID)
+        continue;
       if (fno.fattrib & AM_DIR) {
-        path[i++] = '/';
-        strcpy(&path[i], fn);
-        res = scan_files(path);
-        if (res != FR_OK)
-          break;
-        path[--i] = 0;
-      }
-      else {
-        //chprintf(chp, "%s/%s\r\n", path, fn);
-        ((char*)fbuff)[0] = 'A';
-        ((char*)fbuff)[1] = 'x';
-        ((char*)fbuff)[2] = 'o';
-        ((char*)fbuff)[3] = 'f';
-        fbuff[1] = fno.fsize;
-        /*
-         strcpy(&((char*)fbuff)[4],path);
-         int l = strlen((char *)(&fbuff[0]));
-         ((char*)&fbuff[0])[l] = '/';
-         strcpy(&((char*)&fbuff[0])[l+1],fn);
-         l = strlen((char *)(&fbuff[0]));
-         */
-        strcpy(&((char*)fbuff)[8], fn);
-        int l = strlen((char *)(&fbuff[2]));
+        sprintf(&path[i], "/%s", fn);
+        msg[0] = 'A';
+        msg[1] = 'x';
+        msg[2] = 'o';
+        msg[3] = 'f';
+        *(int32_t *)(&msg[4]) = fno.fsize;
+        *(int32_t *)(&msg[8]) = fno.fdate + (fno.ftime<<16);
+        strcpy(&msg[12], &path[1]);
+        int l = strlen(&msg[12]);
+        msg[12+l] = '/';
+        msg[13+l] = 0;
         chSequentialStreamWrite((BaseSequentialStream * )&BDU1,
-                                (const unsigned char* )fbuff, l + 9);
+                                (const unsigned char* )msg, l+14);
+        res = scan_files(path);
+        path[i] = 0;
+        if (res != FR_OK) break;
+      } else {
+        msg[0] = 'A';
+        msg[1] = 'x';
+        msg[2] = 'o';
+        msg[3] = 'f';
+        *(int32_t *)(&msg[4]) = fno.fsize;
+        *(int32_t *)(&msg[8]) = fno.fdate + (fno.ftime<<16);
+        strcpy(&msg[12], &path[1]);
+        msg[12+i-1] = '/';
+        strcpy(&msg[12+i], fn);
+        int l = strlen(&msg[12]);
+        chSequentialStreamWrite((BaseSequentialStream * )&BDU1,
+                                (const unsigned char* )msg, l+13);
       }
     }
   } else {
@@ -253,8 +266,21 @@ void ReadDirectoryListing(void) {
   chSequentialStreamWrite((BaseSequentialStream * )&BDU1,
                           (const unsigned char* )(&fbuff[0]), 16);
   chThdSleepMilliseconds(10);
-  fbuff[0] = 0;
+  fbuff[0] = '/';
+  fbuff[1] = 0;
   scan_files((char *)&fbuff[0]);
+
+  char *msg = &((char*)fbuff)[64];
+  msg[0] = 'A';
+  msg[1] = 'x';
+  msg[2] = 'o';
+  msg[3] = 'f';
+  *(int32_t *)(&msg[4]) = 0;
+  *(int32_t *)(&msg[8]) = 0;
+  msg[12] = '/';
+  msg[13] = 0;
+  chSequentialStreamWrite((BaseSequentialStream * )&BDU1,
+                          (const unsigned char* )msg, 14);
 }
 
 /* input data decoder state machine
@@ -279,25 +305,73 @@ void ReadDirectoryListing(void) {
  * "AxoB (int or) (int and)" buttons for virtual Axoloti Control
  */
 
-char FileName[16];
-
 FIL pFile;
 int pFileSize;
 
-void CreateFile(void) {
+void ManipulateFile(void) {
   sdcard_attemptMountIfUnmounted();
-  FRESULT err;
-  err = f_open(&pFile, &FileName[0], FA_WRITE | FA_CREATE_ALWAYS);
-  if (err != FR_OK) {
-    report_fatfs_error(err,&FileName[0]);
-  }
-  err = f_lseek(&pFile, pFileSize);
-  if (err != FR_OK) {
-    report_fatfs_error(err,&FileName[0]);
-  }
-  err = f_lseek(&pFile, 0);
-  if (err != FR_OK) {
-    report_fatfs_error(err,&FileName[0]);
+  if (FileName[0]) {
+    // backwards compatibility
+    FRESULT err;
+    err = f_open(&pFile, &FileName[0], FA_WRITE | FA_CREATE_ALWAYS);
+    if (err != FR_OK) {
+      report_fatfs_error(err,&FileName[0]);
+    }
+    err = f_lseek(&pFile, pFileSize);
+    if (err != FR_OK) {
+      report_fatfs_error(err,&FileName[0]);
+    }
+    err = f_lseek(&pFile, 0);
+    if (err != FR_OK) {
+      report_fatfs_error(err,&FileName[0]);
+    }
+  } else {
+    // filename[0] == 0
+    if (FileName[1]=='d') {
+      // create directory
+      FRESULT err;
+      err = f_mkdir(&FileName[6]);
+      if ((err != FR_OK) && (err != FR_EXIST)) {
+        report_fatfs_error(err,&FileName[6]);
+      }
+      // and set timestamp
+      FILINFO fno;
+      fno.fdate = FileName[2] + (FileName[3]<<8);
+      fno.ftime = FileName[4] + (FileName[5]<<8);
+      err = f_utime(&FileName[6],&fno);
+      if (err != FR_OK) {
+        report_fatfs_error(err,&FileName[6]);
+      }
+    } else if (FileName[1]=='f') {
+      // create file
+      FRESULT err;
+      err = f_open(&pFile, &FileName[6], FA_WRITE | FA_CREATE_ALWAYS);
+      if (err != FR_OK) {
+        report_fatfs_error(err,&FileName[6]);
+      }
+      err = f_lseek(&pFile, pFileSize);
+      if (err != FR_OK) {
+        report_fatfs_error(err,&FileName[6]);
+      }
+      err = f_lseek(&pFile, 0);
+      if (err != FR_OK) {
+        report_fatfs_error(err,&FileName[6]);
+      }
+    } else if (FileName[1]=='D') {
+      // delete
+      FRESULT err;
+      err = f_unlink(&FileName[6]);
+      if (err != FR_OK) {
+        report_fatfs_error(err,&FileName[6]);
+      }
+    } else if (FileName[1]=='C') {
+      // change working directory
+      FRESULT err;
+      err = f_chdir(&FileName[6]);
+      if (err != FR_OK) {
+        report_fatfs_error(err,&FileName[6]);
+      }
+    }
   }
 }
 
@@ -306,6 +380,16 @@ void CloseFile(void) {
   err = f_close(&pFile);
   if (err != FR_OK) {
     report_fatfs_error(err,&FileName[0]);
+  }
+  if (!FileName[0]) {
+    // and set timestamp
+    FILINFO fno;
+    fno.fdate = FileName[2] + (FileName[3]<<8);
+    fno.ftime = FileName[4] + (FileName[5]<<8);
+    err = f_utime(&FileName[6],&fno);
+    if (err != FR_OK) {
+      report_fatfs_error(err,&FileName[6]);
+    }
   }
 }
 
@@ -373,6 +457,7 @@ void PExReceiveByte(unsigned char c) {
   static int length;
   static int a;
   static int b;
+  static uint32_t patchid;
 
   if (!header) {
     switch (state) {
@@ -485,30 +570,47 @@ void PExReceiveByte(unsigned char c) {
   else if (header == 'P') { // param change
     switch (state) {
     case 4:
-      value = c;
+      patchid = c;
       state++;
       break;
     case 5:
-      value += c << 8;
+      patchid += c << 8;
       state++;
       break;
     case 6:
-      value += c << 16;
+      patchid += c << 16;
       state++;
       break;
     case 7:
-      value += c << 24;
+      patchid += c << 24;
       state++;
       break;
     case 8:
-      index = c;
+      value = c;
       state++;
       break;
     case 9:
+      value += c << 8;
+      state++;
+      break;
+    case 10:
+      value += c << 16;
+      state++;
+      break;
+    case 11:
+      value += c << 24;
+      state++;
+      break;
+    case 12:
+      index = c;
+      state++;
+      break;
+    case 13:
       index += c << 8;
       state = 0;
       header = 0;
-      if (index < patchMeta.numPEx) {
+      if ((patchid == patchMeta.patchID) &&
+          (index < patchMeta.numPEx)) {
         PExParameterChange(&(patchMeta.pPExch)[index], value, 0xFFFFFFEE);
       }
       break;
@@ -699,14 +801,19 @@ void PExReceiveByte(unsigned char c) {
       pFileSize += c << 24;
       state++;
       break;
+    case 8:
+      FileName[state - 8] = c;
+      // filename starting with null means there are attributes present
+      state++;
+      break;
     default:
-      if (c) {
+      if (c || ((!FileName[0])&&(state<14))) {
         FileName[state - 8] = c;
         state++;
       }
       else {
         FileName[state - 8] = 0;
-        CreateFile();
+        ManipulateFile();
         header = 0;
         state = 0;
         AckPending = 1;

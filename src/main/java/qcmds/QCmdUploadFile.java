@@ -18,11 +18,12 @@
 package qcmds;
 
 import axoloti.Connection;
+import axoloti.SDCardInfo;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Calendar;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -33,11 +34,30 @@ import java.util.logging.Logger;
 public class QCmdUploadFile implements QCmdSerialTask {
 
     InputStream inputStream;
-    String filename;
+    final String filename;
+    final Calendar cal;
+    File file;
+    long size;
+    long tsEpoch;
 
     public QCmdUploadFile(InputStream inputStream, String filename) {
         this.inputStream = inputStream;
         this.filename = filename;
+        this.cal = null;
+    }
+
+    public QCmdUploadFile(File file, String filename) {
+        this.file = file;
+        this.filename = filename;
+        inputStream = null;
+        this.cal = null;
+    }
+
+    public QCmdUploadFile(File file, String filename, Calendar cal) {
+        this.file = file;
+        this.filename = filename;
+        inputStream = null;
+        this.cal = cal;
     }
 
     @Override
@@ -54,12 +74,24 @@ public class QCmdUploadFile implements QCmdSerialTask {
     public QCmd Do(Connection connection) {
         connection.ClearSync();
         try {
+            if (inputStream == null) {
+                inputStream = new FileInputStream(file);
+            }
             Logger.getLogger(QCmdUploadFile.class.getName()).log(Level.INFO, "uploading: {0}", filename);
-            connection.TransmitCreateFile(filename, 0);
-            
-            int MaxBlockSize = 32768;
+            Calendar ts;
+            if (cal != null) {
+                ts = cal;
+            } else if (file != null) {
+                ts = Calendar.getInstance();
+                ts.setTimeInMillis(file.lastModified());
+            } else {
+                ts = Calendar.getInstance();
+            }
             int tlength = inputStream.available();
             int remLength = inputStream.available();
+            size = tlength;
+            connection.TransmitCreateFile(filename, tlength, ts);
+            int MaxBlockSize = 32768;
             int pct = 0;
             do {
                 int l;
@@ -86,6 +118,9 @@ public class QCmdUploadFile implements QCmdSerialTask {
 
             inputStream.close();
             connection.TransmitCloseFile();
+
+            SDCardInfo.getInstance().AddFile(filename, (int) size, ts);
+
             return this;
         } catch (IOException ex) {
             Logger.getLogger(QCmdUploadFile.class.getName()).log(Level.SEVERE, "IOException", ex);

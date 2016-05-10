@@ -37,7 +37,7 @@ USBH_ClassTypeDef  Vendor_Class = {
 
 static USBH_StatusTypeDef USBH_Vendor_InterfaceInit(USBH_HandleTypeDef *phost) {
 
-    USBH_StatusTypeDef status = USBH_FAIL;
+    USBH_StatusTypeDef status = USBH_NOT_SUPPORTED;
 
     if(phost->device.DevDesc.idVendor == USB_ACCESS_VID && phost->device.DevDesc.idProduct == USB_VIRUS_PID) {
        	USBH_UsrLog("USB Access Virus detected");
@@ -52,7 +52,7 @@ static USBH_StatusTypeDef USBH_Virus_InterfaceInit(USBH_HandleTypeDef *phost) {
     MIDI_HandleTypeDef *MIDI_Handle;
     USBH_StatusTypeDef status = USBH_FAIL;
 
-    const uint8_t interface = 3;
+    const uint8_t interface = 5;
 
     usbh_midi_init(); 
 
@@ -77,9 +77,11 @@ static USBH_StatusTypeDef USBH_Virus_InterfaceInit(USBH_HandleTypeDef *phost) {
             MIDI_Handle->output_valid = false;
 
             uint8_t i=0;
+            
             for (; i< num_ep && (!isValidInput(MIDI_Handle) || !isValidOutput(MIDI_Handle)) ; i++) {
                 
-                if(!isValidInput(MIDI_Handle) && phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[i].bEndpointAddress & 0x80) {
+                bool bInput = phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[i].bEndpointAddress & 0x80;
+                if(!isValidInput(MIDI_Handle) && bInput) {
                     MIDI_Handle->InEp = phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[i].bEndpointAddress;
                     MIDI_Handle->InEpSize  = phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[i].wMaxPacketSize;
                 	USBH_UsrLog("USB Host (Virus) Input size requests : %x", MIDI_Handle->InEpSize );
@@ -89,12 +91,11 @@ static USBH_StatusTypeDef USBH_Virus_InterfaceInit(USBH_HandleTypeDef *phost) {
                     if(MIDI_Handle->read_poll<MIDI_MIN_READ_POLL) MIDI_Handle->read_poll = MIDI_MIN_READ_POLL;
                     MIDI_Handle->input_valid = true;
                 }
-                if(!isValidOutput(MIDI_Handle) && phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[i].bEndpointAddress)
-                {
+                if(!isValidOutput(MIDI_Handle) && !bInput) {
                     MIDI_Handle->OutEp = phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[i].bEndpointAddress;
                     MIDI_Handle->OutEpSize  = phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[i].wMaxPacketSize;
                 	USBH_UsrLog("USB Host (Virus) Output size requests : %x", MIDI_Handle->OutEpSize );
-                    if(MIDI_Handle->OutEpSize >USBH_MIDI_EPS_IN_SIZE) MIDI_Handle->OutEpSize = USBH_MIDI_EPS_OUT_SIZE;
+                    if(MIDI_Handle->OutEpSize >USBH_MIDI_EPS_OUT_SIZE) MIDI_Handle->OutEpSize = USBH_MIDI_EPS_OUT_SIZE;
                     MIDI_Handle->write_poll = phost->device.CfgDesc.Itf_Desc[phost->device.current_interface].Ep_Desc[i].bInterval;
                 	USBH_UsrLog("USB Host (Virus) Output interval : %i", MIDI_Handle->write_poll);
                     if(MIDI_Handle->write_poll<MIDI_MIN_WRITE_POLL) MIDI_Handle->write_poll = MIDI_MIN_WRITE_POLL;

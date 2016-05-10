@@ -17,10 +17,8 @@
  */
 package axoloti.menus;
 
-import axoloti.Axoloti;
 import static axoloti.MainFrame.prefs;
-import static axoloti.menus.PopulatePatchMenu.PopulatePatchMenu;
-import java.io.File;
+import axoloti.utils.AxolotiLibrary;
 import javax.swing.JMenu;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
@@ -35,7 +33,12 @@ public class HelpLibraryMenu extends JMenu {
         addMenuListener(new MenuListener() {
             @Override
             public void menuSelected(MenuEvent e) {
-                PopulatePatchMenu.PopulatePatchMenu(HelpLibraryMenu.this, System.getProperty(Axoloti.RELEASE_DIR) + "/objects", ".axh");
+                String dir = "objects/";
+                AxolotiLibrary lib = prefs.getLibrary(AxolotiLibrary.FACTORY_ID);
+                if (lib != null) {
+                    dir = lib.getLocalLocation() + dir;
+                }
+                PopulatePatchMenu.PopulatePatchMenu(HelpLibraryMenu.this, dir, ".axh");
             }
 
             @Override

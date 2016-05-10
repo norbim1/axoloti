@@ -17,11 +17,10 @@
  */
 package axoloti;
 
-import axoloti.dialogs.AboutFrame;
 import axoloti.object.AxoObjects;
 import axoloti.utils.Constants;
+import components.PresetPanel;
 import java.awt.Cursor;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.Toolkit;
@@ -36,6 +35,7 @@ import java.awt.event.KeyEvent;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ImageIcon;
@@ -44,7 +44,6 @@ import javax.swing.JFrame;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
-import javax.swing.filechooser.FileFilter;
 import javax.swing.text.DefaultEditorKit;
 import org.simpleframework.xml.Serializer;
 import org.simpleframework.xml.core.Persister;
@@ -65,16 +64,19 @@ public class PatchFrame extends javax.swing.JFrame implements DocumentWindow, Co
      */
     PatchGUI patch;
 
+    private PresetPanel presetPanel;
+
     public PatchFrame(final PatchGUI patch, QCmdProcessor qcmdprocessor) {
         setIconImage(new ImageIcon(getClass().getResource("/resources/axoloti_icon.png")).getImage());
         this.qcmdprocessor = qcmdprocessor;
         initComponents();
+        fileMenu1.initComponents();
         this.patch = patch;
         this.patch.patchframe = this;
-        DocumentWindowList.RegisterWindow(this);
         USBBulkConnection.GetConnection().addConnectionStatusListener(this);
 
-        jToolbarPanel.add(new components.PresetPanel(patch));
+        presetPanel = new PresetPanel(patch);
+        jToolbarPanel.add(presetPanel);
         jToolbarPanel.add(new javax.swing.Box.Filler(new Dimension(0, 0), new Dimension(0, 0), new Dimension(32767, 32767)));
         jScrollPane1.setViewportView(patch.Layers);
         jScrollPane1.getVerticalScrollBar().setUnitIncrement(Constants.ygrid / 2);
@@ -189,11 +191,13 @@ public class PatchFrame extends javax.swing.JFrame implements DocumentWindow, Co
             jCheckBoxLive.setEnabled(true);
             jCheckBoxMenuItemLive.setSelected(true);
             jCheckBoxMenuItemLive.setEnabled(true);
+            presetPanel.ShowLive(true);
         } else {
             jCheckBoxLive.setSelected(false);
             jCheckBoxLive.setEnabled(true);
             jCheckBoxMenuItemLive.setSelected(false);
             jCheckBoxMenuItemLive.setEnabled(true);
+            presetPanel.ShowLive(false);
         }
     }
 
@@ -278,21 +282,13 @@ public class PatchFrame extends javax.swing.JFrame implements DocumentWindow, Co
         filler3 = new javax.swing.Box.Filler(new java.awt.Dimension(5, 0), new java.awt.Dimension(5, 0), new java.awt.Dimension(5, 0));
         jScrollPane1 = new javax.swing.JScrollPane();
         jMenuBar1 = new javax.swing.JMenuBar();
-        jMenuFile = new javax.swing.JMenu();
-        jMenuNew = new javax.swing.JMenuItem();
-        jSeparator6 = new javax.swing.JPopupMenu.Separator();
-        jMenuOpen = new javax.swing.JMenuItem();
-        jMenuOpenURL = new javax.swing.JMenuItem();
-        recentFileMenu1 = new axoloti.menus.RecentFileMenu();
-        libraryMenu1 = new axoloti.menus.LibraryMenu();
-        favouriteMenu1 = new axoloti.menus.FavouriteMenu();
-        jSeparator5 = new javax.swing.JPopupMenu.Separator();
+        fileMenu1 = new axoloti.menus.FileMenu();
+        jSeparator1 = new javax.swing.JPopupMenu.Separator();
         jMenuSave = new javax.swing.JMenuItem();
         jMenuSaveAs = new javax.swing.JMenuItem();
+        jMenuSaveCopy = new javax.swing.JMenuItem();
         jMenuSaveClip = new javax.swing.JMenuItem();
-        jSeparator1 = new javax.swing.JPopupMenu.Separator();
         jMenuClose = new javax.swing.JMenuItem();
-        jMenuQuit = new javax.swing.JMenuItem();
         jMenuEdit = new javax.swing.JMenu();
         jMenuItemDelete = new javax.swing.JMenuItem();
         jMenuItemSelectAll = new javax.swing.JMenuItem();
@@ -327,6 +323,14 @@ public class PatchFrame extends javax.swing.JFrame implements DocumentWindow, Co
         addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusLost(java.awt.event.FocusEvent evt) {
                 formFocusLost(evt);
+            }
+        });
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            public void componentHidden(java.awt.event.ComponentEvent evt) {
+                formComponentHidden(evt);
+            }
+            public void componentShown(java.awt.event.ComponentEvent evt) {
+                formComponentShown(evt);
             }
         });
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -380,57 +384,18 @@ public class PatchFrame extends javax.swing.JFrame implements DocumentWindow, Co
         jScrollPane1.setAutoscrolls(true);
         getContentPane().add(jScrollPane1);
 
-        jMenuFile.setMnemonic('F');
-        jMenuFile.setText("File");
+        fileMenu1.setText("File");
+        fileMenu1.add(jSeparator1);
 
-        jMenuNew.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N,
+        jMenuSave.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S,
             Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
-    jMenuNew.setText("New");
-    jMenuNew.addActionListener(new java.awt.event.ActionListener() {
+    jMenuSave.setText("Save");
+    jMenuSave.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
-            jMenuNewActionPerformed(evt);
+            jMenuSaveActionPerformed(evt);
         }
     });
-    jMenuFile.add(jMenuNew);
-    jMenuFile.add(jSeparator6);
-
-    jMenuOpen.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O,
-        Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
-jMenuOpen.setText("Open...");
-jMenuOpen.addActionListener(new java.awt.event.ActionListener() {
-    public void actionPerformed(java.awt.event.ActionEvent evt) {
-        jMenuOpenActionPerformed(evt);
-    }
-    });
-    jMenuFile.add(jMenuOpen);
-
-    jMenuOpenURL.setText("Open from URL...");
-    jMenuOpenURL.addActionListener(new java.awt.event.ActionListener() {
-        public void actionPerformed(java.awt.event.ActionEvent evt) {
-            jMenuOpenURLActionPerformed(evt);
-        }
-    });
-    jMenuFile.add(jMenuOpenURL);
-
-    recentFileMenu1.setText("Open Recent");
-    jMenuFile.add(recentFileMenu1);
-
-    libraryMenu1.setText("Library");
-    jMenuFile.add(libraryMenu1);
-
-    favouriteMenu1.setText("Favorites");
-    jMenuFile.add(favouriteMenu1);
-    jMenuFile.add(jSeparator5);
-
-    jMenuSave.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S,
-        Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
-jMenuSave.setText("Save");
-jMenuSave.addActionListener(new java.awt.event.ActionListener() {
-    public void actionPerformed(java.awt.event.ActionEvent evt) {
-        jMenuSaveActionPerformed(evt);
-    }
-    });
-    jMenuFile.add(jMenuSave);
+    fileMenu1.add(jMenuSave);
 
     jMenuSaveAs.setText("Save As...");
     jMenuSaveAs.addActionListener(new java.awt.event.ActionListener() {
@@ -438,7 +403,15 @@ jMenuSave.addActionListener(new java.awt.event.ActionListener() {
             jMenuSaveAsActionPerformed(evt);
         }
     });
-    jMenuFile.add(jMenuSaveAs);
+    fileMenu1.add(jMenuSaveAs);
+
+    jMenuSaveCopy.setText("Save Copy...");
+    jMenuSaveCopy.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            jMenuSaveCopyActionPerformed(evt);
+        }
+    });
+    fileMenu1.add(jMenuSaveCopy);
 
     jMenuSaveClip.setText("Save To Clipboard");
     jMenuSaveClip.addActionListener(new java.awt.event.ActionListener() {
@@ -446,8 +419,7 @@ jMenuSave.addActionListener(new java.awt.event.ActionListener() {
             jMenuSaveClipActionPerformed(evt);
         }
     });
-    jMenuFile.add(jMenuSaveClip);
-    jMenuFile.add(jSeparator1);
+    fileMenu1.add(jMenuSaveClip);
 
     jMenuClose.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_W,
         Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
@@ -457,19 +429,9 @@ jMenuClose.addActionListener(new java.awt.event.ActionListener() {
         jMenuCloseActionPerformed(evt);
     }
     });
-    jMenuFile.add(jMenuClose);
+    fileMenu1.add(jMenuClose);
 
-    jMenuQuit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q,
-        Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
-jMenuQuit.setText("Quit");
-jMenuQuit.addActionListener(new java.awt.event.ActionListener() {
-    public void actionPerformed(java.awt.event.ActionEvent evt) {
-        jMenuQuitActionPerformed(evt);
-    }
-    });
-    jMenuFile.add(jMenuQuit);
-
-    jMenuBar1.add(jMenuFile);
+    jMenuBar1.add(fileMenu1);
 
     jMenuEdit.setMnemonic('E');
     jMenuEdit.setText("Edit");
@@ -687,10 +649,6 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
         }
     }//GEN-LAST:event_jCheckBoxLiveActionPerformed
 
-    private void jMenuOpenActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuOpenActionPerformed
-        MainFrame.mainframe.OpenPatch();
-    }//GEN-LAST:event_jMenuOpenActionPerformed
-
     private void jMenuSaveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuSaveActionPerformed
         String fn = patch.getFileNamePath();
         if ((fn != null) && (!fn.equals("untitled"))) {
@@ -702,60 +660,12 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
         }
     }//GEN-LAST:event_jMenuSaveActionPerformed
 
-    private void jMenuSaveAsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuSaveAsActionPerformed
+    File FileChooserSave() {
         final JFileChooser fc = new JFileChooser(MainFrame.prefs.getCurrentFileDirectory());
         fc.setAcceptAllFileFilterUsed(false);
-        FileFilter axp = new FileFilter() {
-            @Override
-            public boolean accept(File file) {
-                if (file.getName().endsWith("axp")) {
-                    return true;
-                } else if (file.isDirectory()) {
-                    return true;
-                }
-                return false;
-            }
-
-            @Override
-            public String getDescription() {
-                return "Axoloti Patch";
-            }
-        };
-        FileFilter axh = new FileFilter() {
-            @Override
-            public boolean accept(File file) {
-                if (file.getName().endsWith("axh")) {
-                    return true;
-                } else if (file.isDirectory()) {
-                    return true;
-                }
-                return false;
-            }
-
-            @Override
-            public String getDescription() {
-                return "Axoloti Help";
-            }
-        };
-        FileFilter axs = new FileFilter() {
-            @Override
-            public boolean accept(File file) {
-                if (file.getName().endsWith("axs")) {
-                    return true;
-                } else if (file.isDirectory()) {
-                    return true;
-                }
-                return false;
-            }
-
-            @Override
-            public String getDescription() {
-                return "Axoloti Subpatch";
-            }
-        };
-        fc.addChoosableFileFilter(axp);
-        fc.addChoosableFileFilter(axs);
-        fc.addChoosableFileFilter(axh);
+        fc.addChoosableFileFilter(FileUtils.axpFileFilter);
+        fc.addChoosableFileFilter(FileUtils.axsFileFilter);
+        fc.addChoosableFileFilter(FileUtils.axhFileFilter);
         String fn = patch.getFileNamePath();
         if (fn == null) {
             fn = "untitled";
@@ -769,23 +679,23 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
             ext = fn.substring(dot);
         }
         if (ext.equalsIgnoreCase(".axp")) {
-            fc.setFileFilter(axp);
+            fc.setFileFilter(FileUtils.axpFileFilter);
         } else if (ext.equalsIgnoreCase(".axs")) {
-            fc.setFileFilter(axs);
+            fc.setFileFilter(FileUtils.axsFileFilter);
         } else if (ext.equalsIgnoreCase(".axh")) {
-            fc.setFileFilter(axh);
+            fc.setFileFilter(FileUtils.axhFileFilter);
         } else {
-            fc.setFileFilter(axp);
+            fc.setFileFilter(FileUtils.axpFileFilter);
         }
 
         int returnVal = fc.showSaveDialog(this);
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             String filterext = ".axp";
-            if (fc.getFileFilter() == axp) {
+            if (fc.getFileFilter() == FileUtils.axpFileFilter) {
                 filterext = ".axp";
-            } else if (fc.getFileFilter() == axs) {
+            } else if (fc.getFileFilter() == FileUtils.axsFileFilter) {
                 filterext = ".axs";
-            } else if (fc.getFileFilter() == axh) {
+            } else if (fc.getFileFilter() == FileUtils.axhFileFilter) {
                 filterext = ".axh";
             }
 
@@ -819,7 +729,7 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
                         fileToBeSaved = new File(fname.substring(0, fname.length() - 4) + filterext);
                         break;
                     case JOptionPane.NO_OPTION:
-                        return;
+                        return null;
                 }
             }
 
@@ -838,19 +748,23 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
                     case JOptionPane.YES_OPTION:
                         break;
                     case JOptionPane.NO_OPTION:
-                        return;
+                        return null;
                 }
             }
+            return fileToBeSaved;
+        } else {
+            return null;
+        }
+    }
 
+    private void jMenuSaveAsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuSaveAsActionPerformed
+        File fileToBeSaved = FileChooserSave();
+        if (fileToBeSaved != null) {
             patch.setFileNamePath(fileToBeSaved.getPath());
             MainFrame.prefs.setCurrentFileDirectory(fileToBeSaved.getPath());
             patch.save(fileToBeSaved);
         }
     }//GEN-LAST:event_jMenuSaveAsActionPerformed
-
-    private void jMenuQuitActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuQuitActionPerformed
-        patch.GetMainFrame().Quit();
-    }//GEN-LAST:event_jMenuQuitActionPerformed
 
     private void jMenuItemAdjScrollActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemAdjScrollActionPerformed
         jScrollPane1.setAutoscrolls(true);
@@ -905,10 +819,6 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
         patch.deleteSelectedAxoObjInstances();
     }//GEN-LAST:event_jMenuItemDeleteActionPerformed
 
-    private void jMenuNewActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuNewActionPerformed
-        MainFrame.mainframe.NewPatch();
-    }//GEN-LAST:event_jMenuNewActionPerformed
-
     private void jMenuItemSelectAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemSelectAllActionPerformed
         patch.SelectAll();
     }//GEN-LAST:event_jMenuItemSelectAllActionPerformed
@@ -921,7 +831,7 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
         if (patch.settings == null) {
             patch.settings = new PatchSettings();
         }
-        patch.settings.showEditor();
+        patch.settings.showEditor(patch);
     }//GEN-LAST:event_jMenuItemSettingsActionPerformed
 
     private void jCheckBoxMenuItemLiveActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jCheckBoxMenuItemLiveActionPerformed
@@ -939,26 +849,11 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
     }//GEN-LAST:event_jCheckBoxMenuItemLiveActionPerformed
 
     private void jMenuItemUploadSDActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemUploadSDActionPerformed
-        patch.WriteCode();
-        String FileNameNoPath = patch.getFileNamePath();
-        String separator = System.getProperty("file.separator");
-        int lastSeparatorIndex = FileNameNoPath.lastIndexOf(separator);
-        if (lastSeparatorIndex > 0) {
-            FileNameNoPath = FileNameNoPath.substring(lastSeparatorIndex + 1);
-        }
-        Logger.getLogger(PatchFrame.class.getName()).log(Level.INFO, "target filename:{0}", FileNameNoPath);
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdStop());
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdCompilePatch(patch));
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdWriteFile("0:" + FileNameNoPath));
+        patch.UploadToSDCard();
     }//GEN-LAST:event_jMenuItemUploadSDActionPerformed
 
     private void jMenuItemUploadSDStartActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemUploadSDStartActionPerformed
-        patch.WriteCode();
-        String FileNameNoPath = "start.bin";
-        Logger.getLogger(PatchFrame.class.getName()).log(Level.INFO, "target filename:{0}", FileNameNoPath);
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdStop());
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdCompilePatch(patch));
-        qcmdprocessor.AppendToQueue(new qcmds.QCmdWriteFile("0:" + FileNameNoPath));
+        patch.UploadToSDCard("/start.bin");
     }//GEN-LAST:event_jMenuItemUploadSDStartActionPerformed
 
     private void jMenuSaveClipActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuSaveClipActionPerformed
@@ -993,14 +888,26 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
         setCursor(Cursor.getDefaultCursor());
     }//GEN-LAST:event_formFocusLost
 
-    private void jMenuOpenURLActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuOpenURLActionPerformed
-        MainFrame.mainframe.OpenURL();
-    }//GEN-LAST:event_jMenuOpenURLActionPerformed
-
     private void jMenuItem1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItem1ActionPerformed
         String s = patch.GenerateModulationCode3();
         Logger.getLogger(PatchFrame.class.getName()).log(Level.INFO, "modmatrix \n{0}", s);
     }//GEN-LAST:event_jMenuItem1ActionPerformed
+
+    private void formComponentShown(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentShown
+        DocumentWindowList.RegisterWindow(this);
+    }//GEN-LAST:event_formComponentShown
+
+    private void formComponentHidden(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentHidden
+        DocumentWindowList.UnregisterWindow(this);
+    }//GEN-LAST:event_formComponentHidden
+
+    private void jMenuSaveCopyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuSaveCopyActionPerformed
+        File fileToBeSaved = FileChooserSave();
+        if (fileToBeSaved != null) {
+            MainFrame.prefs.setCurrentFileDirectory(fileToBeSaved.getPath());
+            patch.save(fileToBeSaved);
+        }
+    }//GEN-LAST:event_jMenuSaveCopyActionPerformed
 
     private boolean GoLive() {
 
@@ -1030,7 +937,7 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
     /* write to sdcard...
      */
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private axoloti.menus.FavouriteMenu favouriteMenu1;
+    private axoloti.menus.FileMenu fileMenu1;
     private javax.swing.Box.Filler filler2;
     private javax.swing.Box.Filler filler3;
     private axoloti.menus.HelpMenu helpMenu1;
@@ -1042,7 +949,6 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
     private javax.swing.JMenuItem jMenuClose;
     private javax.swing.JMenuItem jMenuCompileCode;
     private javax.swing.JMenu jMenuEdit;
-    private javax.swing.JMenu jMenuFile;
     private javax.swing.JMenuItem jMenuGenerateCode;
     private javax.swing.JMenuItem jMenuItem1;
     private javax.swing.JMenuItem jMenuItemAddObj;
@@ -1059,15 +965,12 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
     private javax.swing.JMenuItem jMenuItemUploadInternalFlash;
     private javax.swing.JMenuItem jMenuItemUploadSD;
     private javax.swing.JMenuItem jMenuItemUploadSDStart;
-    private javax.swing.JMenuItem jMenuNew;
-    private javax.swing.JMenuItem jMenuOpen;
-    private javax.swing.JMenuItem jMenuOpenURL;
     private javax.swing.JMenu jMenuPatch;
     private javax.swing.JMenu jMenuPreset;
-    private javax.swing.JMenuItem jMenuQuit;
     private javax.swing.JMenuItem jMenuSave;
     private javax.swing.JMenuItem jMenuSaveAs;
     private javax.swing.JMenuItem jMenuSaveClip;
+    private javax.swing.JMenuItem jMenuSaveCopy;
     private javax.swing.JMenuItem jMenuUploadCode;
     private javax.swing.JMenu jMenuView;
     private javax.swing.JProgressBar jProgressBarDSPLoad;
@@ -1076,11 +979,7 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
     private javax.swing.JPopupMenu.Separator jSeparator2;
     private javax.swing.JPopupMenu.Separator jSeparator3;
     private javax.swing.JPopupMenu.Separator jSeparator4;
-    private javax.swing.JPopupMenu.Separator jSeparator5;
-    private javax.swing.JPopupMenu.Separator jSeparator6;
     private javax.swing.JPanel jToolbarPanel;
-    private axoloti.menus.LibraryMenu libraryMenu1;
-    private axoloti.menus.RecentFileMenu recentFileMenu1;
     private axoloti.menus.WindowMenu windowMenu1;
     // End of variables declaration//GEN-END:variables
 
@@ -1098,5 +997,25 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
     @Override
     public JFrame GetFrame() {
         return this;
+    }
+
+    @Override
+    public File getFile() {
+        if (patch.getFileNamePath() == null) {
+            return null;
+        } else {
+            return new File(patch.getFileNamePath());
+        }
+    }
+
+    public PatchGUI getPatch() {
+        return patch;
+    }
+
+    ArrayList<DocumentWindow> dwl = new ArrayList<DocumentWindow>();
+
+    @Override
+    public ArrayList<DocumentWindow> GetChildDocuments() {
+        return dwl;
     }
 }

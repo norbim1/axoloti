@@ -50,8 +50,7 @@ import java.awt.event.MouseMotionAdapter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,6 +60,7 @@ import javax.swing.Action;
 import javax.swing.ActionMap;
 import javax.swing.InputMap;
 import javax.swing.JComponent;
+import javax.swing.JFrame;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
@@ -68,6 +68,7 @@ import javax.swing.TransferHandler;
 import org.simpleframework.xml.Root;
 import org.simpleframework.xml.Serializer;
 import org.simpleframework.xml.core.Persister;
+import qcmds.QCmdProcessor;
 
 /**
  *
@@ -712,8 +713,8 @@ public class PatchGUI extends Patch {
 
     void ShowNotesFrame() {
         if (NotesFrame == null) {
-            NotesFrame = new TextEditor(new StringRef());
-            NotesFrame.setTitle(patchframe.getTitle() + ":notes");
+            NotesFrame = new TextEditor(new StringRef(), getPatchframe());
+            NotesFrame.setTitle("notes");
             NotesFrame.SetText(notes);
             NotesFrame.addFocusListener(new FocusListener() {
                 @Override
@@ -995,5 +996,53 @@ public class PatchGUI extends Patch {
             ObjEditor.UpdateObject();
         }
         return b;
+    }
+
+    public static void OpenPatch(String name, InputStream stream) {
+        Serializer serializer = new Persister();
+        try {
+            PatchGUI patch1 = serializer.read(PatchGUI.class, stream);
+            PatchFrame pf = new PatchFrame(patch1, QCmdProcessor.getQCmdProcessor());
+            patch1.setFileNamePath(name);
+            patch1.PostContructor();
+            patch1.setFileNamePath(name);
+            pf.setVisible(true);
+        } catch (Exception ex) {
+            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public static PatchFrame OpenPatchInvisible(File f) {
+        for (DocumentWindow dw : DocumentWindowList.GetList()) {
+            if (f.equals(dw.getFile())) {
+                JFrame frame1 = dw.GetFrame();
+                if (frame1 instanceof PatchFrame) {
+                    return (PatchFrame) frame1;
+                } else {
+                    return null;
+                }
+            }
+        }
+
+        Serializer serializer = new Persister();
+        try {
+            PatchGUI patch1 = serializer.read(PatchGUI.class, f);
+            PatchFrame pf = new PatchFrame(patch1, QCmdProcessor.getQCmdProcessor());
+            patch1.setFileNamePath(f.getAbsolutePath());
+            patch1.PostContructor();
+            patch1.setFileNamePath(f.getPath());
+            return pf;
+        } catch (Exception ex) {
+            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
+        }
+    }
+
+    public static PatchFrame OpenPatch(File f) {
+        PatchFrame pf = OpenPatchInvisible(f);
+        pf.setVisible(true);
+        pf.setState(java.awt.Frame.NORMAL);
+        pf.toFront();
+        return pf;
     }
 }

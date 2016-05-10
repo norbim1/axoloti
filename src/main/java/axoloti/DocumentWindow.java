@@ -17,6 +17,8 @@
  */
 package axoloti;
 
+import java.io.File;
+import java.util.ArrayList;
 import javax.swing.JFrame;
 
 /**
@@ -24,6 +26,12 @@ import javax.swing.JFrame;
  * @author jtaelman
  */
 public interface DocumentWindow {
+
     JFrame GetFrame();
+
     public boolean AskClose();
+
+    public File getFile();
+
+    public ArrayList<DocumentWindow> GetChildDocuments();
 }

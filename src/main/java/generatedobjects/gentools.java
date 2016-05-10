@@ -17,6 +17,7 @@
  */
 package generatedobjects;
 
+import axoloti.MainFrame;
 import axoloti.attributedefinition.AxoAttribute;
 import axoloti.inlets.Inlet;
 import axoloti.inlets.InletFrac32;
@@ -32,6 +33,7 @@ import axoloti.outlets.OutletFrac32Buffer;
 import axoloti.outlets.OutletInt32;
 import axoloti.parameters.Parameter;
 import axoloti.parameters.ParameterFrac32UMap;
+import axoloti.utils.AxolotiLibrary;
 import axoloti.utils.Preferences;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -52,6 +54,7 @@ import org.simpleframework.xml.core.Persister;
  *
  * @author Johannes Taelman
  */
+@Deprecated
 public class gentools {
 
     static protected Serializer serializer = new Persister();
@@ -211,7 +214,7 @@ public class gentools {
             o.SetIncludes(null);
         }
         o.id = catname + "/" + relativeID; // uuid based on full name
-        String upgradeSha = o.GenerateSHA();
+//        String upgradeSha = o.GenerateSHA();
         o.getUUID();
         o.id = relativeID;
         if (o instanceof AxoObject) {
@@ -286,12 +289,12 @@ public class gentools {
             }
 
             if (oo.helpPatch == null) {
-                File f = new File("objects/" + catname + "/" + fn + ".axh");
+                File f = new File(getObjDir() + catname + "/" + fn + ".axh");
                 if (f.exists()) {
                     oo.helpPatch = fn + ".axh";
                 } else {
                     String fcatname = catname.replaceAll("/", "_");
-                    File fcat = new File("objects/" + catname + "/" + fcatname + ".axh");
+                    File fcat = new File(getObjDir() + catname + "/" + fcatname + ".axh");
                     if (fcat.exists()) {
                         oo.helpPatch = fcatname + ".axh";
                     }
@@ -299,11 +302,11 @@ public class gentools {
             }
         }
 
-        String sha = o.GenerateSHA();
-        o.setSHA(sha);
-        if ((upgradeSha != null) && (!upgradeSha.equals(sha))) {
-            o.addUpgradeSHA(upgradeSha);
-        }
+//        String sha = o.GenerateSHA();
+//        o.setSHA(sha);
+//        if ((upgradeSha != null) && (!upgradeSha.equals(sha))) {
+//            o.addUpgradeSHA(upgradeSha);
+//        }
     }
 
     static public void WriteAxoObject(String path, AxoObjectAbstract o) {
@@ -326,11 +329,11 @@ public class gentools {
                 o.id = o.id.substring(i + 1);
             }
 
-            File fd = new File("objects/" + path);
+            File fd = new File(getObjDir() + path);
             if (!fd.isDirectory()) {
                 fd.mkdirs();
             }
-            f = new File("objects/" + path + "/" + fn + ".axo");
+            f = new File(getObjDir() + path + "/" + fn + ".axo");
         } else {
             f = new File(path);
             fn = f.getName();
@@ -407,7 +410,7 @@ public class gentools {
                 // overwrite with new
                 try {
                     System.out.println("object file changed : " + f.getName());
-                    File f2 = new File("objects/" + path + "/" + fn + ".axo");
+                    File f2 = new File(getObjDir() + path + "/" + fn + ".axo");
                     serializer.write(a, f2);
                 } catch (Exception ex) {
                     Logger.getLogger(GeneratedObjects.class.getName()).log(Level.SEVERE, null, ex);
@@ -442,11 +445,11 @@ public class gentools {
         path = path.replace('\\', '/');
         fn = fn.replace('\\', '/');
 
-        File fd = new File("objects/" + path);
+        File fd = new File(getObjDir() + path);
         if (!fd.isDirectory()) {
             fd.mkdirs();
         }
-        File f = new File("objects/" + path + "/" + fn + ".axo");
+        File f = new File(getObjDir() + path + "/" + fn + ".axo");
         AxoObjectFile a = new AxoObjectFile();
         a.objs = o;
         for (AxoObjectAbstract oa : a.objs) {
@@ -497,7 +500,7 @@ public class gentools {
                 // overwrite with new
                 try {
                     System.out.println("object file changed : " + f.getName());
-                    File f2 = new File("objects/" + path + "/" + fn + ".axo");
+                    File f2 = new File(getObjDir() + path + "/" + fn + ".axo");
                     serializer.write(a, f2);
                 } catch (Exception ex) {
                     Logger.getLogger(GeneratedObjects.class.getName()).log(Level.SEVERE, null, ex);
@@ -708,5 +711,14 @@ public class gentools {
         o_s.sSRateCode = "%out%= " + op_prefix + "%in%" + op_suffix + ";";
         a.add(o_s);
         return a;
+    }
+
+    static String getObjDir() {
+        AxolotiLibrary lib = MainFrame.prefs.getLibrary(AxolotiLibrary.FACTORY_ID);
+        String objdir = "objects/";
+        if (lib != null) {
+            objdir = lib.getLocalLocation() + objdir;
+        }
+        return objdir;
     }
 }

@@ -44,6 +44,7 @@ void InitPatch0(void) {
   patchMeta.npresets = 0;
   patchMeta.npreset_entries = 0;
   patchMeta.pPresets = 0;
+  patchMeta.patchID = 0;
 }
 
 int dspLoadPct; // DSP load in percent
@@ -116,16 +117,20 @@ void StopPatch(void) {
   }
 }
 
+static char loadFName[64] = {'f','l','a','s','h',0};
+
 void StartPatch(void) {
   KVP_ClearObjects();
   sdcard_attemptMountIfUnmounted();
   // reinit pin configuration for adc
   adc_configpads();
+  int *ccm; // clear ccmram area declared in ramlink.ld
+  for(ccm = 0x10000000;ccm<0x10000000+0x0000C000;ccm++) *ccm=0;
   patchMeta.fptr_dsp_process = 0;
   patchMeta.fptr_patch_init = (fptr_patch_init_t)(PATCHMAINLOC + 1);
   (patchMeta.fptr_patch_init)(GetFirmwareID());
   if (patchMeta.fptr_dsp_process == 0) {
-    // failed, incompatible firmwareID?
+    report_patchLoadFail((const char *)&loadFName[0]);
     return;
   }
   patchStatus = 0;
@@ -165,9 +170,8 @@ void MidiInMsgHandler(midi_device_t dev, uint8_t port, uint8_t status,
 
 // Thread to load a new patch from within a patch
 
-static const char *index_fn = "0:index.axb";
+static const char *index_fn = "/index.axb";
 
-static char loadFName[16];
 static WORKING_AREA(waThreadLoader, 1024);
 static Thread *pThreadLoader;
 static msg_t ThreadLoader(void *arg) {
@@ -214,8 +218,21 @@ static msg_t ThreadLoader(void *arg) {
             bytes_read--;
           }
           if (bytes_read) {
+            e = e - 4;
+            *e++ = '/';
+            *e++ = 'p';
+            *e++ = 'a';
+            *e++ = 't';
+            *e++ = 'c';
+            *e++ = 'h';
+            *e++ = '.';
+            *e++ = 'b';
+            *e++ = 'i';
+            *e++ = 'n';
             *e = 0;
-            sdcard_loadPatch(p);
+            loadFName[0] = '/';
+            strcpy(&loadFName[1],p);
+            sdcard_loadPatch(loadFName);
           }
           goto cont;
         }
@@ -224,6 +241,11 @@ static msg_t ThreadLoader(void *arg) {
         }
         t++;
         bytes_read--;
+      }
+      if (!bytes_read) {
+        LogTextMessage("patch load out-of-range %d",index);
+        strcpy(&loadFName[0],"/start.bin");
+        sdcard_loadPatch(loadFName);
       }
 cont:
       ;

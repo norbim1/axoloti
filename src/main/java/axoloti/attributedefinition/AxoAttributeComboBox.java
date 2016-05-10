@@ -29,12 +29,18 @@ import org.simpleframework.xml.ElementList;
  */
 public class AxoAttributeComboBox extends AxoAttribute {
 
-    @ElementList
+    @ElementList(required = false)
     ArrayList<String> MenuEntries;
-    @ElementList
+    @ElementList(required = false)
     ArrayList<String> CEntries;
 
     public AxoAttributeComboBox() {
+        if (MenuEntries == null) {
+            MenuEntries = new ArrayList<String>();
+        }
+        if (CEntries == null) {
+            CEntries = new ArrayList<String>();
+        }
     }
 
     public AxoAttributeComboBox(String name, String MenuEntries[], String CEntries[]) {

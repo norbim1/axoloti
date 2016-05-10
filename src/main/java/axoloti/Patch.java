@@ -54,6 +54,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -63,13 +64,18 @@ import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.simpleframework.xml.*;
+import org.simpleframework.xml.core.Complete;
+import org.simpleframework.xml.core.Persist;
 import org.simpleframework.xml.core.Persister;
+import qcmds.QCmdChangeWorkingDirectory;
 import qcmds.QCmdCompilePatch;
+import qcmds.QCmdCreateDirectory;
 import qcmds.QCmdLock;
 import qcmds.QCmdProcessor;
 import qcmds.QCmdRecallPreset;
 import qcmds.QCmdStart;
 import qcmds.QCmdStop;
+import qcmds.QCmdUploadFile;
 import qcmds.QCmdUploadPatch;
 
 /**
@@ -79,6 +85,8 @@ import qcmds.QCmdUploadPatch;
 @Root
 public class Patch {
 
+    @Attribute(required = false)
+    String appVersion;
     public @ElementListUnion({
         @ElementList(entry = "obj", type = AxoObjectInstance.class, inline = true, required = false),
         @ElementList(entry = "patcher", type = AxoObjectInstancePatcher.class, inline = true, required = false),
@@ -112,6 +120,17 @@ public class Patch {
 
     public boolean presetUpdatePending = false;
 
+    @Complete
+    public void Complete() {
+        // called after deserialializtion
+    }
+
+    @Persist
+    public void Persist() {
+        // called prior to serialization
+        appVersion = Version.AXOLOTI_SHORT_VERSION;
+    }
+
     MainFrame GetMainFrame() {
         return MainFrame.mainframe;
     }
@@ -127,12 +146,43 @@ public class Patch {
         return settings;
     }
 
+    void UploadDependentFiles() {
+        String sdpath = getSDCardPath();
+        ArrayList<SDFileReference> files = GetDependendSDFiles();
+        for (SDFileReference fref : files) {
+            File f = fref.localfile;
+            if (!f.exists()) {
+                Logger.getLogger(Patch.class.getName()).log(Level.SEVERE, "File reference unresolved: {0}", f.getName());
+                continue;
+            }
+            if (!f.canRead()) {
+                Logger.getLogger(Patch.class.getName()).log(Level.SEVERE, "Can't read file {0}", f.getName());
+                continue;
+            }
+            if (!SDCardInfo.getInstance().exists("/" + sdpath + "/" + fref.targetPath, f.lastModified(), f.length())) {
+                if (f.length() > 8 * 1024 * 1024) {
+                    Logger.getLogger(Patch.class.getName()).log(Level.INFO, "file {0} is larger than 8MB, skip uploading", f.getName());
+                    continue;
+                }
+                GetQCmdProcessor().AppendToQueue(new QCmdUploadFile(f, "/" + sdpath + "/" + fref.targetPath));
+            } else {
+                Logger.getLogger(Patch.class.getName()).log(Level.INFO, "file {0} matches timestamp and size, skip uploading", f.getName());
+            }
+        }
+    }
+
     void GoLive() {
+        GetQCmdProcessor().AppendToQueue(new QCmdStop());
+        String f = "/" + getSDCardPath();
+        System.out.println("pathf" + f);
+        GetQCmdProcessor().AppendToQueue(new QCmdCreateDirectory(f));
+        GetQCmdProcessor().AppendToQueue(new QCmdChangeWorkingDirectory(f));
+//        GetQCmdProcessor().AppendToQueue(new QCmdStop());
+        UploadDependentFiles();
         ShowPreset(0);
         WriteCode();
         presetUpdatePending = false;
         GetQCmdProcessor().SetPatch(null);
-        GetQCmdProcessor().AppendToQueue(new QCmdStop());
         GetQCmdProcessor().AppendToQueue(new QCmdCompilePatch(this));
         GetQCmdProcessor().AppendToQueue(new QCmdUploadPatch());
         GetQCmdProcessor().AppendToQueue(new QCmdStart(this));
@@ -849,6 +899,13 @@ public class Patch {
         c += "   };\n";
 
         c += "void ApplyPreset(int index){\n"
+                + "   if (!index) {\n"
+                + "     int i;\n"
+                + "     int32_t *p = GetInitParams();\n"
+                + "     for(i=0;i<NPEXCH;i++){\n"
+                + "        PExParameterChange(&PExch[i],p[i],0xFFEF);\n"
+                + "     }\n"
+                + "   }\n"
                 + "   index--;\n"
                 + "   if (index < NPRESETS) {\n"
                 + "     PresetParamChange_t *pa = (PresetParamChange_t *)(GetPresets());\n"
@@ -895,10 +952,9 @@ public class Patch {
             }
             if (i != settings.GetNModulationSources() - 1) {
                 s += ",\n";
-            } else {
-                s += "};\n";
             }
         }
+        s += "};\n";
         s += "   return (PExModulationTarget_t *)&PExModulationSources[0][0];\n";
         s += "   };\n";
 
@@ -907,7 +963,7 @@ public class Patch {
 
     String GenerateParamInitCode3(String ClassName) {
         int s = ParameterInstances.size();
-        String c = "   static const int32_t * GetInitParams(void){\n"
+        String c = "   static int32_t * GetInitParams(void){\n"
                 + "      static const int32_t p[" + s + "]= {\n";
         for (int i = 0; i < s; i++) {
             c += "      " + ParameterInstances.get(i).GetValueRaw();
@@ -918,7 +974,7 @@ public class Patch {
             }
         }
         c += "      };\n"
-                + "      return &p[0];\n"
+                + "      return (int32_t *)&p[0];\n"
                 + "   }";
         return c;
     }
@@ -1099,8 +1155,11 @@ public class Patch {
                         c += n.GetDataType().GenerateConversionToType(i.GetDataType(), n.CName());
                     }
                 }
-            } else { // unconnected input
+            } else if (n == null) { // unconnected input
                 c += i.GetDataType().GenerateSetDefaultValueCode();
+            } else if (!n.isValidNet()) {
+                c += i.GetDataType().GenerateSetDefaultValueCode();
+                Logger.getLogger(Patch.class.getName()).log(Level.SEVERE, "Patch contains invalid net! {0}", i.objname + ":" + i.getInletname());
             }
             needsComma = true;
         }
@@ -1186,22 +1245,48 @@ public class Patch {
                 + "  int i;\n"
                 + "  for(i=0;i<BUFSIZE;i++){\n"
                 + "    AudioInputLeft[i] = inbuf[i*2]>>4;\n"
-                + "    AudioInputRight[i] = inbuf[i*2+1]>>4;\n"
+                + "    switch(AudioInputMode) {\n"
+                + "       case A_MONO:\n"
+                + "             AudioInputRight[i] = AudioInputLeft[i];break;\n"
+                + "       case A_BALANCED:\n"
+                + "             AudioInputLeft[i] = (AudioInputLeft[i] - (inbuf[i*2+1]>>4) ) >> 1;\n"
+                + "             AudioInputRight[i] = AudioInputLeft[i];"
+                + "             break;\n"
+                + "       case A_STEREO:\n"
+                + "       default:\n"
+                + "             AudioInputRight[i] = inbuf[i*2+1]>>4;\n"
+                + "     }\n"
                 + "  }\n"
                 + "  root.dsp();\n";
         if (settings.getSaturate()) {
             c += "  for(i=0;i<BUFSIZE;i++){\n"
                     + "    outbuf[i*2] = __SSAT(AudioOutputLeft[i],28)<<4;\n"
-                    + "    outbuf[i*2+1] = __SSAT(AudioOutputRight[i],28)<<4;\n"
-                    + "  }\n"
-                    + "}\n\n";
+                    + "    switch(AudioOutputMode) {\n"
+                    + "       case A_MONO:\n"
+                    + "             outbuf[i*2+1] = 0;break;\n"
+                    + "       case A_BALANCED:\n"
+                    + "             outbuf[i*2+1] = ~ outbuf[i*2];break;\n"
+                    + "       case A_STEREO:\n"
+                    + "       default:\n"
+                    + "             outbuf[i*2+1] = __SSAT(AudioOutputRight[i],28)<<4;\n"
+                    + "     }\n"
+                    + "  }\n";
         } else {
             c += "  for(i=0;i<BUFSIZE;i++){\n"
                     + "    outbuf[i*2] = AudioOutputLeft[i];\n"
-                    + "    outbuf[i*2+1] = AudioOutputRight[i];\n"
-                    + "  }\n"
-                    + "}\n\n";
+                    + "    switch(AudioOutputMode) {\n"
+                    + "       case A_MONO:\n"
+                    + "             outbuf[i*2+1] = 0;break;\n"
+                    + "       case A_BALANCED:\n"
+                    + "             outbuf[i*2+1] = ~ outbuf[i*2];break;\n"
+                    + "       case A_STEREO:\n"
+                    + "       default:\n"
+                    + "             outbuf[i*2+1] = AudioOutputRight[i];\n"
+                    + "     }\n"
+                    + "  }\n";
         }
+        c += "}\n\n";
+
         c += "void ApplyPreset(int32_t i) {\n"
                 + "   root.ApplyPreset(i);\n"
                 + "}\n\n";
@@ -1237,7 +1322,7 @@ public class Patch {
                 + "  extern uint32_t _pbss_start;\n"
                 + "  extern uint32_t _pbss_end;\n"
                 + "  volatile uint32_t *p;\n"
-                + "  for(p=&_pbss_start;p<&_pbss_end;p++) *p++=0;\n"
+                + "  for(p=&_pbss_start;p<&_pbss_end;p++) *p=0;\n"
                 + "  {\n"
                 + "    funcpp_t fpp = &__ctor_array_start;\n"
                 + "    while (fpp < &__ctor_array_end) {\n"
@@ -1263,7 +1348,7 @@ public class Patch {
 
     int IID = -1; // iid identifies the patch
 
-    int GetIID() {
+    public int GetIID() {
         return IID;
     }
 
@@ -1313,6 +1398,9 @@ public class Patch {
         c += "     int32buffer AudioInputRight;\n";
         c += "     int32buffer AudioOutputLeft;\n";
         c += "     int32buffer AudioOutputRight;\n";
+        c += "     typedef enum { A_STEREO, A_MONO, A_BALANCED } AudioModeType;\n";
+        c += "     AudioModeType AudioOutputMode = A_STEREO;\n";
+        c += "     AudioModeType AudioInputMode = A_STEREO;\n";
 
         c += "static void PropagateToSub(ParameterExchange_t *origin) {\n"
                 + "      ParameterExchange_t *pex = (ParameterExchange_t *)origin->finalvalue;\n"
@@ -1336,6 +1424,10 @@ public class Patch {
             c = c.replace("attr_midichannel", "0");
         } else {
             c = c.replace("attr_midichannel", Integer.toString(settings.GetMidiChannel() - 1));
+        }
+        if (settings == null || !settings.GetMidiSelector()) {
+            c = c.replace("attr_mididevice", "0");
+            c = c.replace("attr_midiport", "0");
         }
         return c;
     }
@@ -1411,11 +1503,22 @@ public class Patch {
             }
         }
 
-        ao.sMidiCode = GenerateMidiInCodePlusPlus();
-        if ((settings != null) && (settings.GetMidiChannelSelector())) {
+        ao.sMidiCode = ""
+                + "if ( attr_mididevice > 0 && dev > 0 && attr_mididevice != dev) return;\n"
+                + "if ( attr_midiport > 0 && port > 0 && attr_midiport != port) return;\n"
+                + GenerateMidiInCodePlusPlus();
+
+        if ((settings != null) && (settings.GetMidiSelector())) {
             String cch[] = {"attr_midichannel", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"};
             String uch[] = {"inherit", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"};
             ao.attributes.add(new AxoAttributeComboBox("midichannel", uch, cch));
+            // use a cut down list of those currently supported
+            String cdev[] = {"0", "1", "2", "3", "15"};
+            String udev[] = {"omni", "din", "usb device", "usb host", "internal"};
+            ao.attributes.add(new AxoAttributeComboBox("mididevice", udev, cdev));
+            String cport[] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"};
+            String uport[] = {"omni", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"};
+            ao.attributes.add(new AxoAttributeComboBox("midiport", uport, cport));
         }
         return ao;
     }
@@ -1485,19 +1588,18 @@ public class Patch {
         }
         String centries[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"};
         ao.attributes.add(new AxoAttributeComboBox("poly", centries, centries));
-        if ((settings != null) && (settings.GetMidiChannelSelector())) {
+        if ((settings != null) && (settings.GetMidiSelector())) {
             String cch[] = {"attr_midichannel", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"};
             String uch[] = {"inherit", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"};
             ao.attributes.add(new AxoAttributeComboBox("midichannel", uch, cch));
+            // use a cut down list of those currently supported
+            String cdev[] = {"0", "1", "2", "3", "15"};
+            String udev[] = {"omni", "din", "usb device", "usb host", "internal"};
+            ao.attributes.add(new AxoAttributeComboBox("mididevice", udev, cdev));
+            String cport[] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"};
+            String uport[] = {"omni", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"};
+            ao.attributes.add(new AxoAttributeComboBox("midiport", uport, cport));
         }
-
-        // use a cut down list of those currently supported
-        String cdev[] = {"0", "1", "2", "3", "15"};
-        String udev[] = {"omni", "din", "usb device", "usb host", "internal"};
-        ao.attributes.add(new AxoAttributeComboBox("mididevice", udev, cdev));
-        String cport[] = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"};
-        String uport[] = {"omni", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"};
-        ao.attributes.add(new AxoAttributeComboBox("midiport", uport, cport));
 
         for (AxoObjectInstanceAbstract o : objectinstances) {
             if (o.typeName.equals("patch/inlet f")) {
@@ -1582,6 +1684,7 @@ public class Patch {
 
         ao.sLocalData = ao.sLocalData.replaceAll("parent->PExModulationSources", "parent->common->PExModulationSources");
         ao.sLocalData = ao.sLocalData.replaceAll("parent->PExModulationPrevVal", "parent->common->PExModulationPrevVal");
+        ao.sLocalData = ao.sLocalData.replaceAll("parent->GetModulationTable", "parent->common->GetModulationTable");
 
         ao.sInitCode = GenerateParamInitCodePlusPlusSub("", "parent");
         ao.sInitCode += "int k;\n"
@@ -1929,7 +2032,7 @@ public class Patch {
         return o;
     }
 
-    void WriteCode() {
+    public void WriteCode() {
         String c = GenerateCode3();
 
         try {
@@ -1945,7 +2048,7 @@ public class Patch {
         Logger.getLogger(Patch.class.getName()).log(Level.INFO, "Generate code complete");
     }
 
-    void Compile() {
+    public void Compile() {
         GetQCmdProcessor().AppendToQueue(new QCmdCompilePatch(this));
     }
 
@@ -2121,109 +2224,56 @@ public class Patch {
 
     public void Unlock() {
         locked = false;
-        for (AxoObjectInstanceAbstract o : objectinstances) {
+        ArrayList<AxoObjectInstanceAbstract> objInstsClone = (ArrayList<AxoObjectInstanceAbstract>) objectinstances.clone();
+        for (AxoObjectInstanceAbstract o : objInstsClone) {
             o.Unlock();
         }
     }
 
-    boolean IsLocked() {
+    public boolean IsLocked() {
         return locked;
     }
 
-    public void ChangeObjectInstanceType(AxoObjectInstanceAbstract obj, AxoObjectAbstract objType) {
-        /*
-         if (obj.getType() == objType) {
-         return;
-         }*/
-        String n = obj.getInstanceName();
-        obj.setInstanceName(n + "____tmp");
-
-        //        if (obj.getType().id.equals(objType.id)) return;
-        // TODO: preserve presets and modulations
-        // TODO: copy attributes tooo!
-        Map<String, ParameterInstance> params = new TreeMap<String, ParameterInstance>();
-        for (ParameterInstance p : obj.getParameterInstances()) {
-            params.put(p.getName(), p);
+    public AxoObjectInstanceAbstract ChangeObjectInstanceType(AxoObjectInstanceAbstract obj, AxoObjectAbstract objType) {
+        if (obj.getType() == objType) {
+            return obj;
         }
-        Map<String, AttributeInstance> attrs = new TreeMap<String, AttributeInstance>();
-        for (AttributeInstance a : obj.getAttributeInstances()) {
-            attrs.put(a.getName(), a);
-        }
-        Map<String, InletInstance> inlets = new TreeMap<String, InletInstance>();
-        for (InletInstance il : obj.GetInletInstances()) {
-            inlets.put(il.GetLabel(), il);
-        }
-        Map<String, OutletInstance> outlets = new TreeMap<String, OutletInstance>();
-        for (OutletInstance ol : obj.GetOutletInstances()) {
-            outlets.put(ol.GetLabel(), ol);
-        }
-
-        // check if instancename was standard name (objname_1 etc)
-        String newname;
-        String[] ss = n.split("_");
-        boolean hasNumeralSuffix = false;
-        try {
-            if ((ss.length > 1) && (Integer.toString(Integer.parseInt(ss[ss.length - 1]))).equals(ss[ss.length - 1])) {
-                hasNumeralSuffix = true;
+        if (obj instanceof AxoObjectInstance) {
+            String n = obj.getInstanceName();
+            obj.setInstanceName(n + "____tmp");
+            AxoObjectInstanceAbstract obj1 = AddObjectInstance(objType, obj.getLocation());
+            if ((obj1 instanceof AxoObjectInstance)) {
+                AxoObjectInstance new_obj = (AxoObjectInstance) obj1;
+                AxoObjectInstance old_obj = (AxoObjectInstance) obj;
+                new_obj.outletInstances = old_obj.outletInstances;
+                new_obj.inletInstances = old_obj.inletInstances;
+                new_obj.parameterInstances = old_obj.parameterInstances;
+                new_obj.attributeInstances = old_obj.attributeInstances;
+                new_obj.PostConstructor();
             }
-        } catch (NumberFormatException e) {
-        }
-        if ((hasNumeralSuffix) && (obj.typeName.equals(n.substring(0, n.length() - ss[ss.length - 1].length() - 1)))) {
-            // find free index
-            int i = 1;
-            String n2 = objType.getDefaultInstanceName() + "_";
-            while (GetObjectInstance(n2 + i) != null) {
-                i++;
+            delete(obj);
+            obj1.setName(n);
+            obj1.PostConstructor();
+            obj1.repaint();
+            return obj1;
+        } else if (obj instanceof AxoObjectInstanceZombie) {
+            String n = obj.getInstanceName();
+            obj.setInstanceName(n + "____tmp");
+            AxoObjectInstanceAbstract obj1 = AddObjectInstance(objType, obj.getLocation());
+            if ((obj1 instanceof AxoObjectInstance)) {
+                AxoObjectInstance new_obj = (AxoObjectInstance) obj1;
+                AxoObjectInstanceZombie old_obj = (AxoObjectInstanceZombie) obj;
+                new_obj.outletInstances = old_obj.outletInstances;
+                new_obj.inletInstances = old_obj.inletInstances;
+                new_obj.PostConstructor();
             }
-            newname = n2 + i;
-        } else {
-            // preserve instancename
-            newname = n;
+            delete(obj);
+            obj1.setName(n);
+            obj1.PostConstructor();
+            obj1.repaint();
+            return obj1;
         }
-        AxoObjectInstanceAbstract newObj = AddObjectInstance(objType, obj.getLocation());
-
-        for (ParameterInstance p : newObj.getParameterInstances()) {
-            ParameterInstance p1 = params.get(p.getName());
-            if (p1 != null) {
-                p.CopyValueFrom(p1);
-            }
-        }
-        for (AttributeInstance a : newObj.getAttributeInstances()) {
-            AttributeInstance a1 = attrs.get(a.getName());
-            if (a1 != null) {
-                a.CopyValueFrom(a1);
-            }
-        }
-        for (OutletInstance ol : newObj.GetOutletInstances()) {
-            OutletInstance ol1 = outlets.get(ol.GetLabel());
-            if (ol1 != null) {
-                Net n1 = GetNet(ol1);
-                if (n1 != null && n1.dest != null) {
-                    ArrayList<InletInstance> dests = new ArrayList<InletInstance>(n1.dest);
-                    for (InletInstance i : dests) {
-                        AddConnection(i, ol);
-                    }
-                }
-            }
-        }
-
-        for (InletInstance il : newObj.GetInletInstances()) {
-            InletInstance il1 = inlets.get(il.GetLabel());
-            if (il1 != null) {
-                Net n1 = GetNet(il1);
-                if (n1 != null && n1.source != null) {
-                    ArrayList<OutletInstance> srcs = new ArrayList<OutletInstance>(n1.source);
-                    for (OutletInstance o : srcs) {
-                        AddConnection(il, o);
-                    }
-                }
-            }
-        }
-
-        this.delete(obj);
-        newObj.setInstanceName(newname);
-        newObj.SetSelected(true);
-        SetDirty();
+        return obj;
     }
 
     void invalidate() {
@@ -2248,7 +2298,9 @@ public class Patch {
             for (AxoObjectInstanceAbstract o : objectinstances) {
                 if (!ProcessedInstances.contains(o.getInstanceName())) {
                     ProcessedInstances.add(o.getInstanceName());
-                    o.PromoteToOverloadedObj();
+                    if (o.isTypeWasAmbiguous()) {
+                        o.PromoteToOverloadedObj();
+                    }
                     p = true;
                     break;
                 }
@@ -2310,4 +2362,68 @@ public class Patch {
         return patchframe;
     }
 
+    public ArrayList<SDFileReference> GetDependendSDFiles() {
+        ArrayList<SDFileReference> files = new ArrayList<SDFileReference>();
+        for (AxoObjectInstanceAbstract o : objectinstances) {
+            ArrayList<SDFileReference> f2 = o.GetDependendSDFiles();
+            if (f2 != null) {
+                files.addAll(f2);
+            }
+        }
+        return files;
+    }
+
+    public File getBinFile() {
+        String buildDir = System.getProperty(Axoloti.HOME_DIR) + "/build";;
+        return new File(buildDir + "/xpatch.bin");
+//            Logger.getLogger(QCmdWriteFile.class.getName()).log(Level.INFO, "bin path: {0}", f.getAbsolutePath());        
+    }
+
+    public void UploadToSDCard(String sdfilename) {
+        WriteCode();
+        Logger.getLogger(PatchFrame.class.getName()).log(Level.INFO, "sdcard filename:{0}", sdfilename);
+        QCmdProcessor qcmdprocessor = QCmdProcessor.getQCmdProcessor();
+        qcmdprocessor.AppendToQueue(new qcmds.QCmdStop());
+        qcmdprocessor.AppendToQueue(new qcmds.QCmdCompilePatch(this));
+        // create subdirs...
+
+        for (int i = 1; i < sdfilename.length(); i++) {
+            if (sdfilename.charAt(i) == '/') {
+                qcmdprocessor.AppendToQueue(new qcmds.QCmdCreateDirectory(sdfilename.substring(0, i)));
+                qcmdprocessor.WaitQueueFinished();
+            }
+        }
+        qcmdprocessor.WaitQueueFinished();
+        Calendar cal;
+        if (dirty) {
+            cal = Calendar.getInstance();
+        } else {
+            cal = Calendar.getInstance();
+            if (FileNamePath != null && !FileNamePath.isEmpty()) {
+                File f = new File(FileNamePath);
+                if (f.exists()) {
+                    cal.setTimeInMillis(f.lastModified());
+                }
+            }
+        }
+        qcmdprocessor.AppendToQueue(new qcmds.QCmdUploadFile(getBinFile(), sdfilename, cal));
+    }
+
+    public void UploadToSDCard() {
+        UploadToSDCard("/" + getSDCardPath() + "/patch.bin");
+    }
+
+    public String getSDCardPath() {
+        String FileNameNoPath = getFileNamePath();
+        String separator = System.getProperty("file.separator");
+        int lastSeparatorIndex = FileNameNoPath.lastIndexOf(separator);
+        if (lastSeparatorIndex > 0) {
+            FileNameNoPath = FileNameNoPath.substring(lastSeparatorIndex + 1);
+        }
+        String FileNameNoExt = FileNameNoPath;
+        if (FileNameNoExt.endsWith(".axp") || FileNameNoExt.endsWith(".axs") || FileNameNoExt.endsWith(".axh")) {
+            FileNameNoExt = FileNameNoExt.substring(0, FileNameNoExt.length() - 4);
+        }
+        return FileNameNoExt;
+    }
 }
