@@ -28,11 +28,11 @@ import org.simpleframework.xml.Attribute;
 public class AxoAttributeInt32 extends AxoAttribute {
 
     @Attribute
-    int MinValue;
+    public int MinValue;
     @Attribute
-    int MaxValue;
+    public int MaxValue;
     @Attribute
-    int DefaultValue;
+    public int DefaultValue;
 
     public AxoAttributeInt32() {
     }
@@ -59,5 +59,12 @@ public class AxoAttributeInt32 extends AxoAttribute {
     @Override
     public AttributeInstanceInt32 InstanceFactory(AxoObjectInstance o) {
         return new AttributeInstanceInt32(this, o);
+    }
+
+    static public final String TypeName = "int";
+
+    @Override
+    public String getTypeName() {
+        return TypeName;
     }
 }

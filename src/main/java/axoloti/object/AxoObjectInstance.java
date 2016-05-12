@@ -20,6 +20,7 @@ package axoloti.object;
 import axoloti.MainFrame;
 import axoloti.Net;
 import axoloti.Patch;
+import axoloti.PatchFrame;
 import axoloti.PatchGUI;
 import axoloti.SDFileReference;
 import axoloti.Synonyms;
@@ -158,7 +159,7 @@ public class AxoObjectInstance extends AxoObjectInstanceAbstract implements Obje
         popm_edit.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent ae) {
-                getType().OpenEditor();
+                OpenEditor();
             }
         });
         popup.add(popm_edit);
@@ -199,14 +200,25 @@ public class AxoObjectInstance extends AxoObjectInstanceAbstract implements Obje
             popup.add(popm_adapt);
         }
 
-        MenuItem popm_embed = new MenuItem("embed (convert to patcher/object");
-        popm_embed.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                ConvertToEmbeddedObj();
-            }
-        });
-        popup.add(popm_embed);
+        if (type instanceof AxoObjectFromPatch) {
+            MenuItem popm_embed = new MenuItem("embed as patch/patcher");
+            popm_embed.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    ConvertToPatchPatcher();
+                }
+            });
+            popup.add(popm_embed);
+        } else if (!(this instanceof AxoObjectInstancePatcherObject)) {
+            MenuItem popm_embed = new MenuItem("embed as patch/object");
+            popm_embed.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent ae) {
+                    ConvertToEmbeddedObj();
+                }
+            });
+            popup.add(popm_embed);
+        }
 
         /*
          h.add(Box.createHorizontalStrut(3));
@@ -313,12 +325,15 @@ public class AxoObjectInstance extends AxoObjectInstanceAbstract implements Obje
                 Net n = getPatch().GetNet(inlinp);
                 if (n != null) {
                     n.connectInlet(inlin);
-                    getPatch().disconnect(inlinp);
                 }
             }
             inletInstances.add(inlin);
             inlin.setAlignmentX(LEFT_ALIGNMENT);
             p_inlets.add(inlin);
+        }
+        // disconnect stale inlets from nets
+        for (InletInstance inlin1 : pInletInstances) {
+            getPatch().disconnect(inlin1);
         }
 
         for (Outlet o : getType().outlets) {
@@ -333,12 +348,15 @@ public class AxoObjectInstance extends AxoObjectInstanceAbstract implements Obje
                 Net n = getPatch().GetNet(oinp);
                 if (n != null) {
                     n.connectOutlet(oin);
-                    getPatch().disconnect(oinp);
                 }
             }
             outletInstances.add(oin);
             oin.setAlignmentX(RIGHT_ALIGNMENT);
             p_outlets.add(oin);
+        }
+        // disconnect stale outlets from nets
+        for (OutletInstance oinp1 : pOutletInstances) {
+            getPatch().disconnect(oinp1);
         }
 
         /*
@@ -414,6 +432,10 @@ public class AxoObjectInstance extends AxoObjectInstanceAbstract implements Obje
         displayInstances = new ArrayList<DisplayInstance>();
         parameterInstances = new ArrayList<ParameterInstance>();
         attributeInstances = new ArrayList<AttributeInstance>();
+    }
+
+    public void OpenEditor() {
+        getType().OpenEditor();
     }
 
     @Override
@@ -789,6 +811,12 @@ public class AxoObjectInstance extends AxoObjectInstanceAbstract implements Obje
         if (getType() instanceof AxoObjectFromPatch) {
             return;
         }
+        if (getType() instanceof AxoObjectPatcher) {
+            return;
+        }
+        if (getType() instanceof AxoObjectPatcherObject) {
+            return;
+        }
         String id = typeName;
         ArrayList<AxoObjectAbstract> candidates = MainFrame.axoObjects.GetAxoObjectFromName(id, patch.GetCurrentWorkingDirectory());
         if (candidates == null) {
@@ -851,10 +879,10 @@ public class AxoObjectInstance extends AxoObjectInstanceAbstract implements Obje
             return;
         }
         if (selected != getType()) {
-            Logger.getLogger(AxoObjectInstance.class.getName()).log(Level.INFO,"promoting " + this + " to " + selected);            
+            Logger.getLogger(AxoObjectInstance.class.getName()).log(Level.INFO, "promoting " + this + " to " + selected);
             patch.ChangeObjectInstanceType(this, selected);
         } else {
-            Logger.getLogger(AxoObjectInstance.class.getName()).log(Level.INFO,"no promotion for {0}", typeName);            
+            Logger.getLogger(AxoObjectInstance.class.getName()).log(Level.INFO, "no promotion for {0}", typeName);
         }
     }
 
@@ -886,18 +914,43 @@ public class AxoObjectInstance extends AxoObjectInstanceAbstract implements Obje
         return files;
     }
 
+    void ConvertToPatchPatcher() {
+        if (IsLocked()) {
+            return;
+        }
+        ArrayList<AxoObjectAbstract> ol = MainFrame.mainframe.axoObjects.GetAxoObjectFromName("patch/patcher", null);
+        assert (!ol.isEmpty());
+        AxoObjectAbstract o = ol.get(0);
+        String iname = getInstanceName();
+        AxoObjectInstancePatcher oi = (AxoObjectInstancePatcher) getPatch().ChangeObjectInstanceType1(this, o);
+        AxoObjectFromPatch ao = (AxoObjectFromPatch) getType();
+        PatchFrame pf = PatchGUI.OpenPatch(ao.f);
+        oi.pf = pf;
+        oi.pg = pf.getPatch();
+        oi.setInstanceName(iname);
+        oi.updateObj();
+        getPatch().delete(this);
+    }
+
     void ConvertToEmbeddedObj() {
+        if (IsLocked()) {
+            return;
+        }
         try {
             ArrayList<AxoObjectAbstract> ol = MainFrame.mainframe.axoObjects.GetAxoObjectFromName("patch/object", null);
-            if (ol.isEmpty()) {
-                return;
-            }
+            assert (!ol.isEmpty());
             AxoObjectAbstract o = ol.get(0);
-            AxoObjectInstancePatcherObject oi = (AxoObjectInstancePatcherObject) getPatch().ChangeObjectInstanceType(this, o);
-            oi.ao = getType().clone();
+            String iname = getInstanceName();
+            AxoObjectInstancePatcherObject oi = (AxoObjectInstancePatcherObject) getPatch().ChangeObjectInstanceType1(this, o);
+            AxoObject ao = getType();
+            oi.ao = new AxoObject(ao.id, ao.sDescription);
+            oi.ao.copy(ao);
             oi.ao.sPath = "";
             oi.ao.upgradeSha = null;
+            oi.ao.CloseEditor();
+            oi.setInstanceName(iname);
             oi.updateObj();
+            getPatch().delete(this);
         } catch (CloneNotSupportedException ex) {
             Logger.getLogger(AxoObjectInstance.class.getName()).log(Level.SEVERE, null, ex);
         }

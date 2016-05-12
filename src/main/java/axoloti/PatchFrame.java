@@ -17,6 +17,8 @@
  */
 package axoloti;
 
+import axoloti.object.AxoObjectInstanceAbstract;
+import axoloti.object.AxoObjectInstancePatcherObject;
 import axoloti.object.AxoObjects;
 import axoloti.utils.Constants;
 import components.PresetPanel;
@@ -161,11 +163,13 @@ public class PatchFrame extends javax.swing.JFrame implements DocumentWindow, Co
         if (!MainFrame.prefs.getExpertMode()) {
             jSeparator3.setVisible(false);
             jMenuItemLock.setVisible(false);
+            jMenuGenerateAndCompileCode.setVisible(false);
             jMenuGenerateCode.setVisible(false);
             jMenuCompileCode.setVisible(false);
             jMenuUploadCode.setVisible(false);
             jMenuItemLock.setVisible(false);
             jMenuItemUnlock.setVisible(false);
+            jMenuItemDumpMod.setVisible(false);
         }
         jMenuPreset.setVisible(false);
         jMenuItemAdjScroll.setVisible(false);
@@ -306,12 +310,13 @@ public class PatchFrame extends javax.swing.JFrame implements DocumentWindow, Co
         jMenuItemUploadSDStart = new javax.swing.JMenuItem();
         jMenuItemUploadInternalFlash = new javax.swing.JMenuItem();
         jSeparator3 = new javax.swing.JPopupMenu.Separator();
+        jMenuGenerateAndCompileCode = new javax.swing.JMenuItem();
         jMenuGenerateCode = new javax.swing.JMenuItem();
         jMenuCompileCode = new javax.swing.JMenuItem();
         jMenuUploadCode = new javax.swing.JMenuItem();
         jMenuItemLock = new javax.swing.JMenuItem();
         jMenuItemUnlock = new javax.swing.JMenuItem();
-        jMenuItem1 = new javax.swing.JMenuItem();
+        jMenuItemDumpMod = new javax.swing.JMenuItem();
         jMenuPreset = new javax.swing.JMenu();
         jMenuItemClearPreset = new javax.swing.JMenuItem();
         jMenuItemPresetCurrentToInit = new javax.swing.JMenuItem();
@@ -542,6 +547,14 @@ jCheckBoxMenuItemLive.addActionListener(new java.awt.event.ActionListener() {
     jMenuPatch.add(jMenuItemUploadInternalFlash);
     jMenuPatch.add(jSeparator3);
 
+    jMenuGenerateAndCompileCode.setText("Generate & Compile code");
+    jMenuGenerateAndCompileCode.addActionListener(new java.awt.event.ActionListener() {
+        public void actionPerformed(java.awt.event.ActionEvent evt) {
+            jMenuGenerateAndCompileCodeActionPerformed(evt);
+        }
+    });
+    jMenuPatch.add(jMenuGenerateAndCompileCode);
+
     jMenuGenerateCode.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_G,
         Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
 jMenuGenerateCode.setText("Generate code");
@@ -588,13 +601,13 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
     });
     jMenuPatch.add(jMenuItemUnlock);
 
-    jMenuItem1.setText("Dump modulation matrix");
-    jMenuItem1.addActionListener(new java.awt.event.ActionListener() {
+    jMenuItemDumpMod.setText("Dump modulation matrix");
+    jMenuItemDumpMod.addActionListener(new java.awt.event.ActionListener() {
         public void actionPerformed(java.awt.event.ActionEvent evt) {
-            jMenuItem1ActionPerformed(evt);
+            jMenuItemDumpModActionPerformed(evt);
         }
     });
-    jMenuPatch.add(jMenuItem1);
+    jMenuPatch.add(jMenuItemDumpMod);
 
     jMenuBar1.add(jMenuPatch);
 
@@ -888,10 +901,10 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
         setCursor(Cursor.getDefaultCursor());
     }//GEN-LAST:event_formFocusLost
 
-    private void jMenuItem1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItem1ActionPerformed
+    private void jMenuItemDumpModActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItemDumpModActionPerformed
         String s = patch.GenerateModulationCode3();
         Logger.getLogger(PatchFrame.class.getName()).log(Level.INFO, "modmatrix \n{0}", s);
-    }//GEN-LAST:event_jMenuItem1ActionPerformed
+    }//GEN-LAST:event_jMenuItemDumpModActionPerformed
 
     private void formComponentShown(java.awt.event.ComponentEvent evt) {//GEN-FIRST:event_formComponentShown
         DocumentWindowList.RegisterWindow(this);
@@ -909,7 +922,21 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
         }
     }//GEN-LAST:event_jMenuSaveCopyActionPerformed
 
+    private void jMenuGenerateAndCompileCodeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuGenerateAndCompileCodeActionPerformed
+        patch.WriteCode();
+        patch.Compile();
+    }//GEN-LAST:event_jMenuGenerateAndCompileCodeActionPerformed
+
     private boolean GoLive() {
+        for (AxoObjectInstanceAbstract i : patch.objectinstances) {
+            if(i instanceof AxoObjectInstancePatcherObject) {
+                AxoObjectInstancePatcherObject ao = (AxoObjectInstancePatcherObject) i;
+                if(ao.isEditorOpen() || ao.getType().isEditorOpen()) {
+                    JOptionPane.showMessageDialog(this,"Close objects editors before going live");
+                    return false;
+                }
+            }
+        }
 
         if (patch.getFileNamePath().endsWith(".axs") || patch.container() != null) {
             Object[] options = {"Yes",
@@ -949,13 +976,14 @@ jMenuUploadCode.addActionListener(new java.awt.event.ActionListener() {
     private javax.swing.JMenuItem jMenuClose;
     private javax.swing.JMenuItem jMenuCompileCode;
     private javax.swing.JMenu jMenuEdit;
+    private javax.swing.JMenuItem jMenuGenerateAndCompileCode;
     private javax.swing.JMenuItem jMenuGenerateCode;
-    private javax.swing.JMenuItem jMenuItem1;
     private javax.swing.JMenuItem jMenuItemAddObj;
     private javax.swing.JMenuItem jMenuItemAdjScroll;
     private javax.swing.JMenuItem jMenuItemClearPreset;
     private javax.swing.JMenuItem jMenuItemDelete;
     private javax.swing.JMenuItem jMenuItemDifferenceToPreset;
+    private javax.swing.JMenuItem jMenuItemDumpMod;
     private javax.swing.JMenuItem jMenuItemLock;
     private javax.swing.JMenuItem jMenuItemNotes;
     private javax.swing.JMenuItem jMenuItemPresetCurrentToInit;

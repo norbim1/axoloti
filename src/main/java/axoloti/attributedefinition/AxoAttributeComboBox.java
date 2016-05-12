@@ -30,9 +30,9 @@ import org.simpleframework.xml.ElementList;
 public class AxoAttributeComboBox extends AxoAttribute {
 
     @ElementList(required = false)
-    ArrayList<String> MenuEntries;
+    public ArrayList<String> MenuEntries;
     @ElementList(required = false)
-    ArrayList<String> CEntries;
+    public ArrayList<String> CEntries;
 
     public AxoAttributeComboBox() {
         if (MenuEntries == null) {
@@ -62,5 +62,12 @@ public class AxoAttributeComboBox extends AxoAttribute {
     @Override
     public AttributeInstanceComboBox InstanceFactory(AxoObjectInstance o) {
         return new AttributeInstanceComboBox(this, o);
+    }
+
+    static public final String TypeName = "combo";
+
+    @Override
+    public String getTypeName() {
+        return TypeName;
     }
 }

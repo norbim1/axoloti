@@ -38,7 +38,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.simpleframework.xml.Serializer;
 import org.simpleframework.xml.core.Persister;
-import transitions.TransitionManager;
 
 /**
  *
@@ -49,8 +48,6 @@ public class AxoObjects {
     public AxoObjectTreeNode ObjectTree;
     public ArrayList<AxoObjectAbstract> ObjectList;
     HashMap<String, AxoObjectAbstract> ObjectUUIDMap;
-
-    TransitionManager transitionmgr;
 
     public AxoObjectAbstract GetAxoObjectFromUUID(String n) {
         return ObjectUUIDMap.get(n);
@@ -138,12 +135,6 @@ public class AxoObjects {
                     set.add(o);
                     return set;
                 }
-            }
-            // last resort : transition?
-            AxoObjectAbstract ao = transitionmgr.GetObjectFromName(n);
-            if (ao != null) {
-                set.add(ao);
-                return set;
             }
             return null;
         } else {
@@ -236,6 +227,20 @@ public class AxoObjects {
                     AxoObjectFile o = null;
                     try {
                          o = serializer.read(AxoObjectFile.class, fileEntry);
+                    } catch (java.lang.reflect.InvocationTargetException ite) {
+                        if(ite.getTargetException() instanceof AxoObjectFile.ObjectVersionException) {
+                            AxoObjectFile.ObjectVersionException ove = (AxoObjectFile.ObjectVersionException) ite.getTargetException();
+                            Logger.getLogger(AxoObjects.class.getName()).log(Level.SEVERE, "Object produced with newer version of Axoloti {0} {1}", 
+                                                                            new Object[]{fileEntry.getAbsoluteFile(), ove.getMessage()});
+                        } else {
+                            Logger.getLogger(AxoObjects.class.getName()).log(Level.SEVERE, fileEntry.getAbsolutePath(), ite);
+                            try {
+                                Logger.getLogger(AxoObjects.class.getName()).log(Level.INFO,"Error reading object, try relaxed mode {0}",fileEntry.getAbsolutePath());
+                                o = serializer.read(AxoObjectFile.class, fileEntry, false);
+                            } catch (Exception ex1) {
+                                Logger.getLogger(AxoObjects.class.getName()).log(Level.SEVERE, null, ex1);
+                            }
+                        }
                     } catch (Exception ex) {
                         Logger.getLogger(AxoObjects.class.getName()).log(Level.SEVERE, fileEntry.getAbsolutePath(), ex);
                         try {
@@ -347,8 +352,6 @@ public class AxoObjects {
                 } else {
                     Logger.getLogger(AxoObjects.class.getName()).log(Level.SEVERE, "search path empty!");
                 }
-                transitionmgr = new TransitionManager();
-                transitionmgr.LoadTransitions();
                 Logger.getLogger(AxoObjects.class.getName()).log(Level.INFO, "finished loading objects");
             }
         };

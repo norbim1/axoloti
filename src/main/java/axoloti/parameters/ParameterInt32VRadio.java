@@ -28,9 +28,10 @@ import org.simpleframework.xml.Element;
 public class ParameterInt32VRadio extends Parameter<ParameterInstanceInt32VRadio> {
 
     @Element
-    ValueInt32 MaxValue;
+    public ValueInt32 MaxValue;
 
     public ParameterInt32VRadio() {
+        this.MaxValue = new ValueInt32(1);
     }
 
     public ParameterInt32VRadio(String name, int MinValue, int MaxValue) {
@@ -48,5 +49,12 @@ public class ParameterInt32VRadio extends Parameter<ParameterInstanceInt32VRadio
     public void updateSHA(MessageDigest md) {
         super.updateSHA(md);
         md.update(("int32.vradio" + MaxValue.getInt()).getBytes());
+    }
+
+    static public final String TypeName = "int32.vradio";
+
+    @Override
+    public String getTypeName() {
+        return TypeName;
     }
 }

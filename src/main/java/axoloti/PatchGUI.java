@@ -65,6 +65,7 @@ import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.TransferHandler;
+import javax.xml.stream.XMLStreamException;
 import org.simpleframework.xml.Root;
 import org.simpleframework.xml.Serializer;
 import org.simpleframework.xml.core.Persister;
@@ -673,6 +674,8 @@ public class PatchGUI extends Patch {
                 }
             }
             AdjustSize();
+        } catch (javax.xml.stream.XMLStreamException ex) {
+            // silence
         } catch (Exception ex) {
             Logger.getLogger(PatchGUI.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -1032,6 +1035,15 @@ public class PatchGUI extends Patch {
             patch1.PostContructor();
             patch1.setFileNamePath(f.getPath());
             return pf;
+        } catch (java.lang.reflect.InvocationTargetException ite) {
+            if(ite.getTargetException() instanceof Patch.PatchVersionException) {
+                Patch.PatchVersionException pve = (Patch.PatchVersionException) ite.getTargetException();
+                Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, "Patch produced with newer version of Axoloti {0} {1}", 
+                                                                new Object[]{f.getAbsoluteFile(), pve.getMessage()});
+            } else {
+                Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ite);
+            }
+            return null;
         } catch (Exception ex) {
             Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
             return null;

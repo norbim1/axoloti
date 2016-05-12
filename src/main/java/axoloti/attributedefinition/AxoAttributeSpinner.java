@@ -28,11 +28,11 @@ import org.simpleframework.xml.Attribute;
 public class AxoAttributeSpinner extends AxoAttribute {
 
     @Attribute
-    int MinValue;
+    public int MinValue;
     @Attribute
-    int MaxValue;
+    public int MaxValue;
     @Attribute
-    int DefaultValue;
+    public int DefaultValue;
 
     public AxoAttributeSpinner() {
     }
@@ -59,5 +59,12 @@ public class AxoAttributeSpinner extends AxoAttribute {
     @Override
     public AttributeInstanceSpinner InstanceFactory(AxoObjectInstance o) {
         return new AttributeInstanceSpinner(this, o);
+    }
+
+    static public final String TypeName = "spinner";
+
+    @Override
+    public String getTypeName() {
+        return TypeName;
     }
 }

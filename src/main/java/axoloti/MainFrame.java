@@ -21,6 +21,8 @@ import static axoloti.Axoloti.FIRMWARE_DIR;
 import static axoloti.Axoloti.HOME_DIR;
 import static axoloti.Axoloti.RELEASE_DIR;
 import static axoloti.Axoloti.RUNTIME_DIR;
+import static axoloti.Version.AXOLOTI_VERSION;
+import static axoloti.Version.AXOLOTI_BUILD_TIME;
 import axoloti.dialogs.AxolotiRemoteControl;
 import axoloti.dialogs.FileManagerFrame;
 import axoloti.dialogs.KeyboardFrame;
@@ -239,6 +241,7 @@ public final class MainFrame extends javax.swing.JFrame implements ActionListene
                     if (tsuf.length() > 0) {
                         MainFrame.this.setTitle(MainFrame.this.getTitle() + " (" + tsuf + ")");
                     }
+                    Logger.getLogger(MainFrame.class.getName()).log(Level.INFO, "Axoloti version : {0}  build time : {1}", new Object[] {Version.AXOLOTI_VERSION, Version.AXOLOTI_BUILD_TIME});
 
                     updateLinkFirmwareID();
 
@@ -676,11 +679,15 @@ public final class MainFrame extends javax.swing.JFrame implements ActionListene
     }
 
     public boolean runPatchTests() {
-        return runTestDir(new File(System.getProperty(Axoloti.RELEASE_DIR) + "/patches"));
+        AxolotiLibrary fLib= prefs.getLibrary(AxolotiLibrary.FACTORY_ID);
+        if(fLib == null) return false;
+        return runTestDir(new File(fLib.getLocalLocation() + "patches"));
     }
 
     public boolean runObjectTests() {
-        return runTestDir(new File(System.getProperty(Axoloti.RELEASE_DIR) + "/objects"));
+        AxolotiLibrary fLib= prefs.getLibrary(AxolotiLibrary.FACTORY_ID);
+        if(fLib == null) return false;
+        return runTestDir(new File(fLib.getLocalLocation() + "objects"));
     }
 
     public boolean runFileTest(String patchName) {
@@ -819,7 +826,7 @@ public final class MainFrame extends javax.swing.JFrame implements ActionListene
             qcmdprocessor.AppendToQueue(new qcmds.QCmdDisconnect());
             qcmdprocessor.AppendToQueue(new qcmds.QCmdFlashDFU());
         } else {
-            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, "No devices in DFU mode detected. To bring Axoloti Core in DFU mode, remove power from Axoloti Core, and power it up while holding button S1. The USB port needs to be connected with this computer too...");
+            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, "No devices in DFU mode detected. To bring Axoloti Core in DFU mode, remove power from Axoloti Core, and then connect the micro-USB port to your computer while holding button S1. The LEDs will stay off when in DFU mode.");
         }
     }//GEN-LAST:event_jMenuItemFlashDFUActionPerformed
 
@@ -1058,7 +1065,8 @@ public final class MainFrame extends javax.swing.JFrame implements ActionListene
                 + "the leds will blink for a minute, "
                 + "do not interrupt until the leds "
                 + "stop blinking.\n"
-                + "When the leds stop blinking, you can connect again.",
+                + "When the leds stop blinking, you can connect again.\n"
+                + "Note: if there is a USB device connected to USB Host port, unplug it now.",
                 "Firmware update...",
                 JOptionPane.YES_NO_OPTION);
         if (s == 0) {

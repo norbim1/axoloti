@@ -17,7 +17,6 @@
  */
 package axoloti;
 
-import axoloti.attribute.AttributeInstance;
 import axoloti.attributedefinition.AxoAttributeComboBox;
 import axoloti.inlets.InletBool32;
 import axoloti.inlets.InletCharPtr32;
@@ -58,15 +57,14 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.simpleframework.xml.*;
 import org.simpleframework.xml.core.Complete;
 import org.simpleframework.xml.core.Persist;
 import org.simpleframework.xml.core.Persister;
+import org.simpleframework.xml.core.Validate;
 import qcmds.QCmdChangeWorkingDirectory;
 import qcmds.QCmdCompilePatch;
 import qcmds.QCmdCreateDirectory;
@@ -119,6 +117,98 @@ public class Patch {
     private AxoObjectInstanceAbstract controllerinstance;
 
     public boolean presetUpdatePending = false;
+
+    static public class PatchVersionException
+            extends RuntimeException {
+
+        PatchVersionException(String msg) {
+            super(msg);
+        }
+    }
+
+    private static final int AVX = getVersionX(Version.AXOLOTI_SHORT_VERSION),
+            AVY = getVersionY(Version.AXOLOTI_SHORT_VERSION),
+            AVZ = getVersionZ(Version.AXOLOTI_SHORT_VERSION);
+
+    private static int getVersionX(String vS) {
+        if (vS != null) {
+            int i = vS.indexOf('.');
+            if (i > 0) {
+                String v = vS.substring(0, i);
+                try {
+                    return Integer.valueOf(v);
+                } catch (NumberFormatException e) {
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static int getVersionY(String vS) {
+        if (vS != null) {
+            int i = vS.indexOf('.');
+            if (i > 0) {
+                int j = vS.indexOf('.', i + 1);
+                if (j > 0) {
+                    String v = vS.substring(i + 1, j);
+                    try {
+                        return Integer.valueOf(v);
+                    } catch (NumberFormatException e) {
+
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static int getVersionZ(String vS) {
+        if (vS != null) {
+            int i = vS.indexOf('.');
+            if (i > 0) {
+                int j = vS.indexOf('.', i + 1);
+                if (j > 0) {
+                    String v = vS.substring(j + 1);
+                    try {
+                        return Integer.valueOf(v);
+                    } catch (NumberFormatException e) {
+
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    @Validate
+    public void Validate() {
+        // called after deserialializtion, stops validation
+        if (appVersion != null
+                && !appVersion.equals(Version.AXOLOTI_SHORT_VERSION)) {
+            int vX = getVersionX(appVersion);
+            int vY = getVersionY(appVersion);
+            int vZ = getVersionZ(appVersion);
+
+            if (AVX > vX) {
+                return;
+            }
+            if (AVX == vX) {
+                if (AVY > vY) {
+                    return;
+                }
+                if (AVY == vY) {
+                    if (AVZ > vZ) {
+                        return;
+                    }
+                    if (AVZ == vZ) {
+                        return;
+                    }
+                }
+            }
+
+            throw new PatchVersionException(appVersion);
+        }
+    }
 
     @Complete
     public void Complete() {
@@ -259,7 +349,7 @@ public class Patch {
             n.patch = this;
             n.PostConstructor();
         }
-        PromoteOverloading();
+        PromoteOverloading(true);
         ShowPreset(0);
         if (settings == null) {
             settings = new PatchSettings();
@@ -367,6 +457,7 @@ public class Patch {
         }
         return null;
     }
+
     /*
      private boolean CompatType(DataType source, DataType d2){
      if (d1 == d2) return true;
@@ -374,7 +465,6 @@ public class Patch {
      if ((d1 == DataType.frac32)&&(d2 == DataType.bool32)) return true;
      return false;
      }*/
-
     public Net AddConnection(InletInstance il, OutletInstance ol) {
         if (!IsLocked()) {
             if (il.GetObjectInstance().patch != this) {
@@ -1147,13 +1237,11 @@ public class Patch {
                     } else {
                         c += n.CName();
                     }
+                } else if (n.NeedsLatch()
+                        && (objectinstances.indexOf(n.source.get(0).GetObjectInstance()) >= objectinstances.indexOf(o))) {
+                    c += n.GetDataType().GenerateConversionToType(i.GetDataType(), n.CName() + "Latch");
                 } else {
-                    if (n.NeedsLatch()
-                            && (objectinstances.indexOf(n.source.get(0).GetObjectInstance()) >= objectinstances.indexOf(o))) {
-                        c += n.GetDataType().GenerateConversionToType(i.GetDataType(), n.CName() + "Latch");
-                    } else {
-                        c += n.GetDataType().GenerateConversionToType(i.GetDataType(), n.CName());
-                    }
+                    c += n.GetDataType().GenerateConversionToType(i.GetDataType(), n.CName());
                 }
             } else if (n == null) { // unconnected input
                 c += i.GetDataType().GenerateSetDefaultValueCode();
@@ -1174,12 +1262,10 @@ public class Patch {
                 } else {
                     c += n.CName() + "+";
                 }
+            } else if (i.GetDataType() instanceof axoloti.datatypes.DataTypeBuffer) {
+                c += "UNCONNECTED_OUTPUT_BUFFER";
             } else {
-                if (i.GetDataType() instanceof axoloti.datatypes.DataTypeBuffer) {
-                    c += "UNCONNECTED_OUTPUT_BUFFER";
-                } else {
-                    c += "UNCONNECTED_OUTPUT";
-                }
+                c += "UNCONNECTED_OUTPUT";
             }
             needsComma = true;
         }
@@ -1316,7 +1402,6 @@ public class Patch {
         c += "void xpatch_init2(int fwid)\n"
                 + "{\n"
                 + "  if (fwid != 0x" + MainFrame.mainframe.LinkFirmwareID + ") {\n"
-                + "    patchMeta.fptr_dsp_process = 0;\n"
                 + "    return;"
                 + "  }\n"
                 + "  extern uint32_t _pbss_start;\n"
@@ -1486,7 +1571,7 @@ public class Patch {
             if (o.typeName.equals("patch/inlet f") || o.typeName.equals("patch/inlet i") || o.typeName.equals("patch/inlet b")) {
                 ao.sKRateCode += "   " + o.getCInstanceName() + "_i._inlet = inlet_" + o.getLegalName() + ";\n";
             } else if (o.typeName.equals("patch/inlet string")) {
-                ao.sKRateCode += "   " + o.getCInstanceName() + "_i._inlet = (const char *)inlet_" + o.getLegalName() + ";\n";
+                ao.sKRateCode += "   " + o.getCInstanceName() + "_i._inlet = (char *)inlet_" + o.getLegalName() + ";\n";
             } else if (o.typeName.equals("patch/inlet a")) {
                 ao.sKRateCode += "   for(i=0;i<BUFSIZE;i++) " + o.getCInstanceName() + "_i._inlet[i] = inlet_" + o.getLegalName() + "[i];\n";
             }
@@ -1577,7 +1662,7 @@ public class Patch {
 //    }
     // Poly voices from one (or omni) midi channel
     AxoObject GenerateAxoObjPoly() {
-//        SortByPosition();
+        SortByPosition();
         AxoObject ao = new AxoObject("unnamedobject", FileNamePath);
         ao.includes = getIncludes();
         ao.depends = getDepends();
@@ -1621,7 +1706,8 @@ public class Patch {
             } else if (o.typeName.equals("patch/outlet a")) {
                 ao.outlets.add(new OutletFrac32Buffer(o.getInstanceName(), o.getInstanceName()));
             } else if (o.typeName.equals("patch/outlet string")) {
-                ao.outlets.add(new OutletCharPtr32(o.getInstanceName(), o.getInstanceName()));
+                Logger.getLogger(Patch.class.getName()).log(Level.SEVERE, "string outlet impossible in poly subpatches!");
+                // ao.outlets.add(new OutletCharPtr32(o.getInstanceName(), o.getInstanceName()));                
             }
             for (ParameterInstance p : o.getParameterInstances()) {
                 if (p.isOnParent()) {
@@ -1736,7 +1822,7 @@ public class Patch {
                     || o.typeName.equals("patch/inlet f") || o.typeName.equals("patch/inlet i") || o.typeName.equals("patch/inlet b")) {
                 ao.sKRateCode += "   getVoices()[vi]." + o.getCInstanceName() + "_i._inlet = inlet_" + o.getLegalName() + ";\n";
             } else if (o.typeName.equals("inlet_string") || o.typeName.equals("patch/inlet string")) {
-                ao.sKRateCode += "   getVoices()[vi]." + o.getCInstanceName() + "_i._inlet = (const char *)inlet_" + o.getLegalName() + ";\n";
+                ao.sKRateCode += "   getVoices()[vi]." + o.getCInstanceName() + "_i._inlet = (char *)inlet_" + o.getLegalName() + ";\n";
             } else if (o.typeName.equals("inlet~") || o.typeName.equals("patch/inlet a")) {
                 ao.sKRateCode += "{int j; for(j=0;j<BUFSIZE;j++) getVoices()[vi]." + o.getCInstanceName() + "_i._inlet[j] = inlet_" + o.getLegalName() + "[j];}\n";
             }
@@ -1778,7 +1864,7 @@ public class Patch {
                 + "          (status == MIDI_NOTE_OFF + attr_midichannel)) {\n"
                 + "  int i;\n"
                 + "  for(i=0;i<attr_poly;i++){\n"
-                + "    if (notePlaying[i] == data1){\n"
+                + "    if ((notePlaying[i] == data1) && pressed[i]){\n"
                 + "      voicePriority[i] = priority++;\n"
                 + "      pressed[i] = 0;\n"
                 + "      if (!sustain)\n"
@@ -2060,6 +2146,7 @@ public class Patch {
             }
         }
     }
+
     /*
      void ApplyPreset(int i) { // OBSOLETE
      presetNo = i;
@@ -2107,7 +2194,6 @@ public class Patch {
      }
      }
      */
-
     void ClearCurrentPreset() {
     }
 
@@ -2134,6 +2220,7 @@ public class Patch {
          }
          }*/
     }
+
     /*
      PresetParameterChange IncludeParameterInPreset(ParameterInstance param) {
      if (presetNo>0){
@@ -2179,7 +2266,6 @@ public class Patch {
      */
     //final int NPRESETS = 8;
     //final int NPRESET_ENTRIES = 32;
-
     public int[] DistillPreset(int i) {
         int[] pdata;
         pdata = new int[settings.GetNPresetEntries() * 2];
@@ -2234,7 +2320,7 @@ public class Patch {
         return locked;
     }
 
-    public AxoObjectInstanceAbstract ChangeObjectInstanceType(AxoObjectInstanceAbstract obj, AxoObjectAbstract objType) {
+    public AxoObjectInstanceAbstract ChangeObjectInstanceType1(AxoObjectInstanceAbstract obj, AxoObjectAbstract objType) {
         if (obj.getType() == objType) {
             return obj;
         }
@@ -2249,11 +2335,8 @@ public class Patch {
                 new_obj.inletInstances = old_obj.inletInstances;
                 new_obj.parameterInstances = old_obj.parameterInstances;
                 new_obj.attributeInstances = old_obj.attributeInstances;
-                new_obj.PostConstructor();
             }
-            delete(obj);
             obj1.setName(n);
-            obj1.PostConstructor();
             obj1.repaint();
             return obj1;
         } else if (obj instanceof AxoObjectInstanceZombie) {
@@ -2265,17 +2348,23 @@ public class Patch {
                 AxoObjectInstanceZombie old_obj = (AxoObjectInstanceZombie) obj;
                 new_obj.outletInstances = old_obj.outletInstances;
                 new_obj.inletInstances = old_obj.inletInstances;
-                new_obj.PostConstructor();
             }
-            delete(obj);
             obj1.setName(n);
-            obj1.PostConstructor();
             obj1.repaint();
             return obj1;
         }
         return obj;
     }
 
+    public AxoObjectInstanceAbstract ChangeObjectInstanceType(AxoObjectInstanceAbstract obj, AxoObjectAbstract objType) {
+        AxoObjectInstanceAbstract obj1 = ChangeObjectInstanceType1(obj, objType);
+        if (obj1!=obj){
+            obj1.PostConstructor();
+            delete(obj);
+        }
+        return obj1;
+    }
+    
     void invalidate() {
     }
 
@@ -2289,7 +2378,12 @@ public class Patch {
         GetQCmdProcessor().AppendToQueue(new QCmdRecallPreset(i));
     }
 
-    public void PromoteOverloading() {
+    /**
+     *
+     * @param initial If true, only objects restored from object name reference
+     * (not UUID) will promote to a variant with the same name. 
+     */
+    public void PromoteOverloading(boolean initial) {
         refreshIndexes();
         Set<String> ProcessedInstances = new HashSet<String>();
         boolean p = true;
@@ -2298,7 +2392,7 @@ public class Patch {
             for (AxoObjectInstanceAbstract o : objectinstances) {
                 if (!ProcessedInstances.contains(o.getInstanceName())) {
                     ProcessedInstances.add(o.getInstanceName());
-                    if (o.isTypeWasAmbiguous()) {
+                    if (!initial || o.isTypeWasAmbiguous()) {
                         o.PromoteToOverloadedObj();
                     }
                     p = true;
