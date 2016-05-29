@@ -202,7 +202,7 @@ void sdcard_loadPatch(char *fname) {
 //  LogTextMessage("load %s",fname);
 
   // change working directory
-
+  f_chdir("/");
   int i=0;
   for(i=strlen(fname);i;i--){
     if (fname[i]=='/')

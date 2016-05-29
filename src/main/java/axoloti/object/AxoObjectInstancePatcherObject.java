@@ -36,6 +36,7 @@ public class AxoObjectInstancePatcherObject extends AxoObjectInstance {
     AxoObjectEditor aoe;
     @Element(name = "object")
     AxoObject ao;
+    ButtonComponent BtnEdit;
 
     public AxoObjectInstancePatcherObject() {
     }
@@ -96,20 +97,21 @@ public class AxoObjectInstancePatcherObject extends AxoObjectInstance {
             }
         });
     }
+
     public boolean isEditorOpen() {
         return aoe != null && aoe.isVisible();
     }
 
-   @Override
+    @Override
     public void ObjectModified(Object src) {
         updateObj();
-    }        
-    
+    }
+
     @Override
     public void PostConstructor() {
         super.PostConstructor();
         //updateObj();
-        ButtonComponent BtnEdit = new ButtonComponent("edit");
+        BtnEdit = new ButtonComponent("edit");
         BtnEdit.setAlignmentX(LEFT_ALIGNMENT);
         BtnEdit.setAlignmentY(TOP_ALIGNMENT);
         BtnEdit.addActListener(new ActListener() {
@@ -125,4 +127,19 @@ public class AxoObjectInstancePatcherObject extends AxoObjectInstance {
         resizeToGrid();
     }
 
+    @Override
+    public void Unlock() {
+        super.Unlock();
+        if (BtnEdit != null) {
+            BtnEdit.setEnabled(true);
+        }
+    }
+
+    @Override
+    public void Lock() {
+        super.Lock();
+        if (BtnEdit != null) {
+            BtnEdit.setEnabled(false);
+        }
+    }
 }

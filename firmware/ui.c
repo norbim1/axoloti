@@ -296,9 +296,14 @@ void EnterMenuLoadFile(void) {
 
   char str[20] = "0:";
   strcat(str, F->keyname);
-
+  int l = strlen(str);
+  if (str[l - 4] != '.') {
+	  strcat(str, "/patch.bin");
+  }
   sdcard_loadPatch(str);
 }
+
+char FileName[64];
 
 void EnterMenuLoad(void) {
   memp = (uint8_t *)&fbuff[0];
@@ -308,10 +313,10 @@ void EnterMenuLoad(void) {
   int index = 0;
   char *fn;
 #if _USE_LFN
-  fno.lfname = 0;
-  fno.lfsize = 0;
+  fno.lfname = &FileName[0];
+  fno.lfsize = sizeof(FileName);
 #endif
-  res = f_opendir(&dir, "");
+  res = f_opendir(&dir, "/");
   if (res == FR_OK) {
     for (;;) {
       res = f_readdir(&dir, &fno);
@@ -319,14 +324,24 @@ void EnterMenuLoad(void) {
         break;
       if (fno.fname[0] == '.')
         continue;
+#if _USE_LFN
+      fn = *fno.lfname ? fno.lfname : fno.fname;
+#else
       fn = fno.fname;
+#endif
       if (fno.fattrib & AM_DIR) {
-        // ignore subdirectories for now
+          int l = strlen(fn);
+    	  char *s;
+          s = (char *)memp;
+          strcpy(s, fn);
+          memp += l + 1;
+          SetKVP_FNCTN(&TmpMenuKvps[index], NULL, s, &EnterMenuLoadFile);
+          index++;
       }
       else {
         int l = strlen(fn);
-        if ((fn[l - 4] == '.') && (fn[l - 3] == 'B') && (fn[l - 2] == 'I')
-            && (fn[l - 1] == 'N')) {
+        if ((fn[l - 4] == '.') && (fn[l - 3] == 'b') && (fn[l - 2] == 'i')
+            && (fn[l - 1] == 'n')) {
           char *s;
           s = (char *)memp;
           strcpy(s, fn);
