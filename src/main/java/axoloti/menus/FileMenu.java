@@ -25,9 +25,9 @@ import axoloti.PatchGUI;
 import axoloti.dialogs.PatchBank;
 import axoloti.dialogs.PreferencesFrame;
 import axoloti.utils.AxolotiLibrary;
+import axoloti.utils.KeyUtils;
 import axoloti.utils.Preferences;
 import generatedobjects.GeneratedObjects;
-import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,11 +35,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import qcmds.QCmdProcessor;
 
 /**
@@ -77,7 +79,7 @@ public class FileMenu extends JMenu {
         jMenuAutoTest = new JMenuItem();
 
         jMenuNewPatch.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N,
-                Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+                KeyUtils.CONTROL_OR_CMD_MASK));
         jMenuNewPatch.setText("New patch");
         jMenuNewPatch.addActionListener(new java.awt.event.ActionListener() {
             @Override
@@ -97,7 +99,7 @@ public class FileMenu extends JMenu {
         insert(jMenuNewBank, pos++);
 
         jMenuOpen.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O,
-                Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+                KeyUtils.CONTROL_OR_CMD_MASK));
         jMenuOpen.setText("Open...");
         jMenuOpen.addActionListener(new java.awt.event.ActionListener() {
             @Override
@@ -175,7 +177,7 @@ public class FileMenu extends JMenu {
         add(jSeparator1);
 
         jMenuQuit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q,
-                Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()));
+                KeyUtils.CONTROL_OR_CMD_MASK));
         jMenuQuit.setText("Quit");
         jMenuQuit.addActionListener(new java.awt.event.ActionListener() {
             @Override
@@ -250,7 +252,7 @@ public class FileMenu extends JMenu {
     }
 
     private void jMenuOpenActionPerformed(java.awt.event.ActionEvent evt) {
-        FileUtils.Open(MainFrame.mainframe);
+        FileUtils.Open((JFrame) SwingUtilities.getWindowAncestor(this));
     }
 
     private void jMenuNewPatchActionPerformed(java.awt.event.ActionEvent evt) {

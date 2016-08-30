@@ -45,9 +45,9 @@ int codec_interrupt_timestamp;
 void codec_ADAU1961_hw_reset(void) {
 }
 
-/* I2C interface #2 */
-/* SDA : PB11
- * SCL : PB10
+/* I2C interface #3 */
+/* SDA : PH8
+ * SCL : PH7
  */
 static const I2CConfig i2cfg2 = {OPMODE_I2C, 100000, STD_DUTY_CYCLE, };
 
@@ -226,7 +226,7 @@ void codec_ADAU1961_hw_init(uint16_t samplerate) {
     while(i) {
       // wait for PLL
       ADAU1961_ReadRegister6(ADAU1961_REG_R1_PLLC);
-      if (i2ctxbuf[5] & 0x02)
+      if (i2crxbuf[5] & 0x02)
         break;
       chThdSleepMilliseconds(1);
       i--;
@@ -443,7 +443,6 @@ void codec_ADAU1961_i2s_init(uint16_t sampleRate) {
   SAI1_Block_A->CR1 |= SAI_xCR1_SAIEN;
   SAI1_Block_B->CR1 |= SAI_xCR1_SAIEN;
 
-  codec_ADAU1961_hw_init(sampleRate);
 }
 
 void codec_ADAU1961_Stop(void) {

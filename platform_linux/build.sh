@@ -21,6 +21,10 @@ elif [ -f /etc/debian_version ]; then
     OS=Debian  # XXX or Ubuntu??
 elif [ -f /etc/arch-release ]; then
     OS=Archlinux
+elif [ -f /etc/gentoo-release ]; then
+    OS=Gentoo
+elif [ -f /etc/fedora-release ]; then
+    OS=Fedora
 else
     OS=$(uname -s)
 fi
@@ -29,7 +33,18 @@ case $OS in
     Ubuntu|Debian)
         echo "apt-get install -y libtool libudev-dev automake autoconf ant curl lib32z1 lib32ncurses5 lib32bz2-1.0"
         sudo apt-get install -y libtool libudev-dev automake autoconf \
-        ant curl lib32z1 lib32ncurses5 lib32bz2-1.0
+        ant curl lib32z1 lib32ncurses5
+
+        # On more recent versions of Ubuntu
+        # the libbz2 package is multi-arch
+        install_lib_bz2() {
+            sudo apt-get install -y lib32bz2-1.0
+        }
+        set +e
+        if ! install_lib_bz2; then
+            set -e
+            sudo apt-get install -y libbz2-1.0:i386
+        fi
         ;;
     Archlinux|Arch)
         echo "pacman -Syy"
@@ -37,6 +52,15 @@ case $OS in
         echo "pacman -S --noconfirm apache-ant libtool automake autoconf curl lib32-ncurses lib32-bzip2"
         sudo pacman -S --noconfirm apache-ant libtool automake autoconf curl \
              lib32-ncurses lib32-bzip2
+        ;;
+    Gentoo)
+	echo "detected Gentoo"
+	;;
+    Fedora)
+        echo "detected Fedora"
+        sudo dnf group install "Development Tools"
+        sudo dnf -y install libusb dfu-util libtool libudev-devel automake autoconf \
+        ant curl ncurses-libs bzip2
         ;;
     *)
         echo "Cannot handle dist: $OS"
@@ -53,13 +77,13 @@ mkdir -p "${PLATFORM_ROOT}/lib"
 mkdir -p "${PLATFORM_ROOT}/src"
 
 
-if [ ! -d "${PLATFORM_ROOT}/../chibios" ]; 
+if [ ! -d "${PLATFORM_ROOT}/../chibios" ];
 then
     cd "${PLATFORM_ROOT}/src"
     CH_VERSION=2.6.9
     ARDIR=ChibiOS_${CH_VERSION}
     ARCHIVE=${ARDIR}.zip
-    if [ ! -f ${ARCHIVE} ]; 
+    if [ ! -f ${ARCHIVE} ];
     then
         echo "##### downloading ${ARCHIVE} #####"
         curl -L http://sourceforge.net/projects/chibios/files/ChibiOS_RT%20stable/Version%20${CH_VERSION}/${ARCHIVE} > ${ARCHIVE}
@@ -154,6 +178,10 @@ case $OS in
         echo "pacman -Syy jdk7-openjdk"
         sudo pacman -S --noconfirm jdk7-openjdk
         ;;
+    Gentoo)
+	echo "emerge --update jdk:1.7 ant"
+	sudo emerge --update jdk:1.7 ant
+	;;
 esac
 
 

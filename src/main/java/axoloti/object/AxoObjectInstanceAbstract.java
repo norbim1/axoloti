@@ -18,10 +18,13 @@
 package axoloti.object;
 
 import axoloti.MainFrame;
+import axoloti.Net;
 import axoloti.Patch;
 import axoloti.PatchGUI;
 import axoloti.SDFileReference;
+import axoloti.Theme;
 import axoloti.attribute.AttributeInstance;
+import axoloti.displays.DisplayInstance;
 import axoloti.inlets.InletInstance;
 import axoloti.outlets.OutletInstance;
 import axoloti.parameters.ParameterInstance;
@@ -29,11 +32,8 @@ import axoloti.utils.CharEscape;
 import axoloti.utils.Constants;
 import components.LabelComponent;
 import components.TextFieldComponent;
-import axoloti.displays.DisplayInstance;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Point;
-import java.awt.PopupMenu;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
@@ -49,6 +49,9 @@ import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.SwingUtilities;
+import javax.swing.border.Border;
 import org.simpleframework.xml.Attribute;
 import org.simpleframework.xml.Root;
 
@@ -57,7 +60,7 @@ import org.simpleframework.xml.Root;
  * @author Johannes Taelman
  */
 @Root(name = "obj_abstr")
-public abstract class AxoObjectInstanceAbstract extends JPanel implements Comparable<AxoObjectInstanceAbstract>, ObjectModifiedListener {
+public abstract class AxoObjectInstanceAbstract extends JPanel implements Comparable<AxoObjectInstanceAbstract>, ObjectModifiedListener, MouseListener, MouseMotionListener {
 
     @Attribute(name = "type")
     public String typeName;
@@ -74,16 +77,14 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
     int y;
     public Patch patch;
     AxoObjectAbstract type;
-    boolean dragging = false;
-    int dX, dY;
-    private boolean Selected = false;
+    private Point dragLocation = null;
+    private Point dragAnchor = null;
+    protected boolean Selected = false;
     private boolean Locked = false;
     private boolean typeWasAmbiguous = false;
-    JPanel Titlebar;
+    final JPanel Titlebar = new JPanel();
     TextFieldComponent InstanceNameTF;
     LabelComponent InstanceLabel;
-    MouseListener ml;
-    MouseMotionListener mml;
 
     public AxoObjectInstanceAbstract() {
     }
@@ -135,6 +136,10 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
         return patch;
     }
 
+    public PatchGUI getPatchGUI() {
+        return (PatchGUI) patch;
+    }
+
     public String getInstanceName() {
         return InstanceName;
     }
@@ -152,7 +157,6 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
             AxoObjectInstanceAbstract o1 = patch.GetObjectInstance(InstanceName);
             if ((o1 != null) && (o1 != this)) {
                 Logger.getLogger(AxoObjectInstanceAbstract.class.getName()).log(Level.SEVERE, "Object name {0} already exists!", InstanceName);
-                doLayout();
                 repaint();
                 return;
             }
@@ -160,10 +164,6 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
         this.InstanceName = InstanceName;
         if (InstanceLabel != null) {
             InstanceLabel.setText(InstanceName);
-        }
-        doLayout();
-        if (getParent() != null) {
-            getParent().repaint();
         }
     }
 
@@ -201,8 +201,6 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
         return type;
     }
 
-    PopupMenu popup;
-
     private final Dimension TitleBarMinimumSize = new Dimension(40, 12);
     private final Dimension TitleBarMaximumSize = new Dimension(32768, 12);
 
@@ -211,141 +209,167 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
         setMinimumSize(new Dimension(60, 40));
         //setMaximumSize(new Dimension(Short.MAX_VALUE,
         //        Short.MAX_VALUE));
-        setLocation(x, y);
+
 //        setFocusable(true);
-        Titlebar = new JPanel();
+        Titlebar.removeAll();
         Titlebar.setLayout(new BoxLayout(Titlebar, BoxLayout.LINE_AXIS));
-        Titlebar.setBackground(Color.getHSBColor(0.f, 0.0f, 0.6f));
+        Titlebar.setBackground(Theme.getCurrentTheme().Object_TitleBar_Background);
         Titlebar.setMinimumSize(TitleBarMinimumSize);
         Titlebar.setMaximumSize(TitleBarMaximumSize);
-        setBorder(BorderFactory.createLineBorder(Color.WHITE));
-        setOpaque(true);
+
+        setBorder(borderUnselected);
         resolveType();
+
+        setBackground(Theme.getCurrentTheme().Object_Default_Background);
+
         setVisible(true);
-//        revalidate();
 
-        popup = new PopupMenu();
+        Titlebar.addMouseListener(this);
+        addMouseListener(this);
 
-        ml = new MouseListener() {
-            @Override
-            public void mouseClicked(MouseEvent me) {
-                if (patch != null) {
-                    if (me.getClickCount() == 1) {
-                        if (me.isShiftDown()) {
-                            SetSelected(!GetSelected());
-                            ((PatchGUI) patch).repaint();
-                        } else if (Selected == false) {
-                            ((PatchGUI) patch).SelectNone();
-                            SetSelected(true);
-                            ((PatchGUI) patch).repaint();
-                        }
-                    }
-                    if (me.getClickCount() == 2) {
-                        ((PatchGUI) patch).ShowClassSelector(AxoObjectInstanceAbstract.this.getLocation(), AxoObjectInstanceAbstract.this, null);
-                    }
+        Titlebar.addMouseMotionListener(this);
+        addMouseMotionListener(this);
+    }
+
+    JPopupMenu CreatePopupMenu() {
+        JPopupMenu popup = new JPopupMenu();
+        return popup;
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent me) {
+        if (patch != null) {
+            if (me.getClickCount() == 1) {
+                if (me.isShiftDown()) {
+                    SetSelected(!GetSelected());
+                    me.consume();
+                } else if (Selected == false) {
+                    ((PatchGUI) patch).SelectNone();
+                    SetSelected(true);
+                    me.consume();
                 }
             }
-            /*
-             ClassSelector cs = ((PatchGUI)patch).cs;
-             cs.setText(getType().id);
-             //                        getParent().add(cs, 0);
-             cs.setLocation(getLocation());
-             //                        newObjTF.setSize(400,300);
-             cs.setVisible(true);
-             cs.requestFocus();
-             * /
-             }
-             } else {
-             for (AxoObjectInstanceAbstract o : patch.objectinstances) {
-             o.SetSelected(false);
-             }
-             SetSelected(true);
-             }
-             //patch.invalidate();
-             }*/
+            if (me.getClickCount() == 2) {
+                ((PatchGUI) patch).ShowClassSelector(AxoObjectInstanceAbstract.this.getLocation(), AxoObjectInstanceAbstract.this, null);
+                me.consume();
+            }
+        }
+    }
 
-            @Override
-            public void mousePressed(MouseEvent me) {
-                if (me.isPopupTrigger()) {
+    @Override
+    public void mousePressed(MouseEvent me) {
+        handleMousePressed(me);
+    }
 
-                } else if (!IsLocked()) {
-                    dX = me.getXOnScreen() - getX();
-                    dY = me.getYOnScreen() - getY();
-                    dragging = true;
-                    if (IsSelected()) {
-                        for (AxoObjectInstanceAbstract o : patch.objectinstances) {
-                            if (o.IsSelected()) {
-                                o.dX = me.getXOnScreen() - o.getX();
-                                o.dY = me.getYOnScreen() - o.getY();
-                                o.dragging = true;
-                            }
+    @Override
+    public void mouseReleased(MouseEvent me) {
+        handleMouseReleased(me);
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent me) {
+    }
+
+    @Override
+    public void mouseExited(MouseEvent me) {
+    }
+
+    @Override
+    public void mouseDragged(MouseEvent me) {
+        if ((patch != null) && (draggingObjects != null)) {
+            Point locOnScreen = me.getLocationOnScreen();
+            int dx = locOnScreen.x - dragAnchor.x;
+            int dy = locOnScreen.y - dragAnchor.y;
+            for (AxoObjectInstanceAbstract o : draggingObjects) {
+                int nx = o.dragLocation.x + dx;
+                int ny = o.dragLocation.y + dy;
+                if (!me.isShiftDown()) {
+                    nx = ((nx + (Constants.X_GRID / 2)) / Constants.X_GRID) * Constants.X_GRID;
+                    ny = ((ny + (Constants.Y_GRID / 2)) / Constants.Y_GRID) * Constants.Y_GRID;
+                }
+                if (o.x != nx || o.y != ny) {
+                    o.setLocation(nx, ny);
+                }
+            }
+        }
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent me) {
+    }
+
+    private void moveToDraggedLayer(AxoObjectInstanceAbstract o) {
+        if (getPatchGUI().objectLayerPanel.isAncestorOf(o)) {
+            getPatchGUI().objectLayerPanel.remove(o);
+            getPatchGUI().draggedObjectLayerPanel.add(o);
+        }
+    }
+
+    ArrayList<AxoObjectInstanceAbstract> draggingObjects = null;
+
+    protected void handleMousePressed(MouseEvent me) {
+        if (patch != null) {
+            if (me.isPopupTrigger()) {
+                JPopupMenu p = CreatePopupMenu();
+                p.show(Titlebar, 0, Titlebar.getHeight());
+                me.consume();
+            } else if (!IsLocked()) {
+                draggingObjects = new ArrayList<AxoObjectInstanceAbstract>();
+                dragAnchor = me.getLocationOnScreen();
+                moveToDraggedLayer(this);
+                draggingObjects.add(this);
+                dragLocation = getLocation();
+                if (IsSelected()) {
+                    for (AxoObjectInstanceAbstract o : patch.objectinstances) {
+                        if (o.IsSelected()) {
+                            moveToDraggedLayer(o);
+                            draggingObjects.add(o);
+                            o.dragLocation = o.getLocation();
                         }
                     }
                 }
+                me.consume();
             }
+        }
+    }
 
-            @Override
-            public void mouseReleased(MouseEvent me) {
-                if (dragging) {
-                    dragging = false;
-                    if (patch != null) {
-                        for (AxoObjectInstanceAbstract o : patch.objectinstances) {
-                            o.dragging = false;
-                        }
-                        patch.AdjustSize();
+    private void moveToObjectLayer(AxoObjectInstanceAbstract o, int z) {
+        if (getPatchGUI().draggedObjectLayerPanel.isAncestorOf(o)) {
+            getPatchGUI().draggedObjectLayerPanel.remove(o);
+            getPatchGUI().objectLayerPanel.add(o);
+            getPatchGUI().objectLayerPanel.setComponentZOrder(o, z);
+        }
+    }
+
+    protected void handleMouseReleased(MouseEvent me) {
+        if (me.isPopupTrigger()) {
+            JPopupMenu p = CreatePopupMenu();
+            p.show(Titlebar, 0, Titlebar.getHeight());
+            me.consume();
+            return;
+        }
+        int maxZIndex = 0;
+        if (draggingObjects != null) {
+            if (patch != null) {
+                boolean dirtyOnRelease = false;
+                for (AxoObjectInstanceAbstract o : draggingObjects) {
+                    moveToObjectLayer(o, 0);
+                    if (getPatchGUI().objectLayerPanel.getComponentZOrder(o) > maxZIndex) {
+                        maxZIndex = getPatchGUI().objectLayerPanel.getComponentZOrder(o);
                     }
-                }
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent me) {
-            }
-
-            @Override
-            public void mouseExited(MouseEvent me) {
-            }
-        };
-
-        Titlebar.addMouseListener(ml);
-        addMouseListener(ml);
-
-        mml = new MouseMotionListener() {
-            @Override
-            public void mouseDragged(MouseEvent me) {
-                if (patch != null) {
-                    if (dragging) {/*
-                         x = me.getLocationOnScreen().x - dX;
-                         y = me.getLocationOnScreen().y - dY;
-                         setLocation(x, y);
-                         dX = me.getLocationOnScreen().x - getX();
-                         dY = me.getLocationOnScreen().y - getY();*/
-
-                        for (AxoObjectInstanceAbstract o : patch.objectinstances) {
-                            if (o.dragging) {
-                                o.x = me.getLocationOnScreen().x - o.dX;
-                                o.y = me.getLocationOnScreen().y - o.dY;
-                                o.dX = me.getLocationOnScreen().x - o.getX();
-                                o.dY = me.getLocationOnScreen().y - o.getY();
-                                if (!me.isShiftDown()) {
-                                    o.x = ((o.x + (Constants.xgrid / 2)) / Constants.xgrid) * Constants.xgrid;
-                                    o.y = ((o.y + (Constants.ygrid / 2)) / Constants.ygrid) * Constants.ygrid;
-                                }
-                                o.setLocation(o.x, o.y);
-                            }
-                        }
-                        //patch.invalidate();
-                        patch.repaint();
+                    if (o.x != dragLocation.x || o.y != dragLocation.y) {
+                        dirtyOnRelease = true;
                     }
+                    o.repaint();
                 }
+                draggingObjects = null;
+                if (dirtyOnRelease) {
+                    patch.SetDirty();
+                }
+                patch.AdjustSize();
             }
-
-            @Override
-            public void mouseMoved(MouseEvent me) {
-            }
-        };
-
-        Titlebar.addMouseMotionListener(mml);
-        addMouseMotionListener(mml);
+            me.consume();
+        }
     }
 
     @Override
@@ -354,7 +378,21 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
         this.x = x;
         this.y = y;
         if (patch != null) {
-            patch.repaint();
+            repaint();
+            for (InletInstance i : GetInletInstances()) {
+                Net n = getPatch().GetNet(i);
+                if (n != null) {
+                    n.updateBounds();
+                    n.repaint();
+                }
+            }
+            for (OutletInstance i : GetOutletInstances()) {
+                Net n = getPatch().GetNet(i);
+                if (n != null) {
+                    n.updateBounds();
+                    n.repaint();
+                }
+            }
         }
     }
 
@@ -371,7 +409,6 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
     public void addInstanceNameEditor() {
         InstanceNameTF = new TextFieldComponent(InstanceName);
         InstanceNameTF.selectAll();
-//        InstanceNameTF.setInputVerifier(new AxoObjectInstanceNameVerifier());
         InstanceNameTF.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent ae) {
@@ -386,7 +423,7 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
                 String s = InstanceNameTF.getText();
                 setInstanceName(s);
                 getParent().remove(InstanceNameTF);
-                patch.repaint();
+                repaint();
             }
 
             @Override
@@ -408,7 +445,7 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
                     String s = InstanceNameTF.getText();
                     setInstanceName(s);
                     getParent().remove(InstanceNameTF);
-                    patch.repaint();
+                    repaint();
                 }
             }
         });
@@ -418,8 +455,8 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
         InstanceNameTF.setSize(getWidth(), 15);
         InstanceNameTF.setVisible(true);
         InstanceNameTF.requestFocus();
-        //patch.repaint();
     }
+
     /*
      public class AxoObjectInstanceNameVerifier extends InputVerifier {
 
@@ -443,9 +480,8 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
      }
      return true;
      }
-     }    
+     }
      */
-
     public String GenerateInstanceDataDeclaration2() {
         return null;
     }
@@ -493,12 +529,15 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
         return Selected;
     }
 
+    static Border borderSelected = BorderFactory.createLineBorder(Theme.getCurrentTheme().Object_Border_Selected);
+    static Border borderUnselected = BorderFactory.createLineBorder(Theme.getCurrentTheme().Object_Border_Unselected);
+
     public void SetSelected(boolean Selected) {
         if (this.Selected != Selected) {
             if (Selected) {
-                setBorder(BorderFactory.createLineBorder(Color.BLACK));
+                setBorder(borderSelected);
             } else {
-                setBorder(BorderFactory.createLineBorder(Color.WHITE));
+                setBorder(borderUnselected);
             }
             repaint();
         }
@@ -525,6 +564,16 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
         super.setLocation(x1, y1);
         x = x1;
         y = y1;
+
+        if (patch != null) {
+            for (Net n : patch.nets) {
+                n.updateBounds();
+            }
+        }
+    }
+
+    public void moveToFront() {
+        getPatchGUI().objectLayerPanel.setComponentZOrder(this, 0);
     }
 
     public boolean providesModulationSource() {
@@ -561,18 +610,18 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
     public void PromoteToOverloadedObj() {
     }
 
-    /*    
+    /*
      public String GenerateStructName() {
      return "";
      }
 
      public String GenerateDoFunctionName(){
      return "";
-     }    
+     }
 
      public String GenerateInitFunctionName(){
      return "";
-     }                
+     }
      */
     public String GenerateInitCodePlusPlus(String vprefix, boolean enableOnParent) {
         return "";
@@ -595,10 +644,10 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
     }
 
     public void resizeToGrid() {
-        doLayout();
+        validate();
         Dimension d = getPreferredSize();
-        d.width = ((d.width + Constants.xgrid - 1) / Constants.xgrid) * Constants.xgrid;
-        d.height = ((d.height + Constants.ygrid - 1) / Constants.ygrid) * Constants.ygrid;
+        d.width = ((d.width + Constants.X_GRID - 1) / Constants.X_GRID) * Constants.X_GRID;
+        d.height = ((d.height + Constants.Y_GRID - 1) / Constants.Y_GRID) * Constants.Y_GRID;
         setSize(d);
     }
 
@@ -612,5 +661,12 @@ public abstract class AxoObjectInstanceAbstract extends JPanel implements Compar
 
     public boolean isTypeWasAmbiguous() {
         return typeWasAmbiguous;
-    }       
+    }
+
+    public void Close() {
+        AxoObjectAbstract t = getType();
+        if (t != null) {
+            t.removeObjectModifiedListener(this);
+        }
+    }
 }

@@ -17,6 +17,7 @@
  */
 package axoloti.utils;
 
+import java.awt.Color;
 import java.awt.Font;
 
 /**
@@ -25,7 +26,16 @@ import java.awt.Font;
  */
 public class Constants {
 
-    public static final Font font = Font.decode("Lucida Sans Regular 9");
-    public static final int xgrid = 14;
-    public static final int ygrid = 14;
+    public static final Font FONT = Font.decode("Lucida Sans Regular 9");
+    public static final int X_GRID = 14;
+    public static final int Y_GRID = 14;
+
+    public static final Color TRANSPARENT = new Color(255, 255, 255, 0);
+
+    public static final int PATCH_SIZE = 5000;
+
+    public static final String OBJECT_LAYER_PANEL = "OBJECT_LAYER_PANEL";
+    public static final String DRAGGED_OBJECT_LAYER_PANEL = "DRAGGED_OBJECT_LAYER_PANEL";
+
+    public static final int ANCESTOR_CACHE_SIZE = 1024;
 }

@@ -19,15 +19,14 @@ package axoloti.object;
 
 import axoloti.Patch;
 import axoloti.PatchGUI;
+import axoloti.Theme;
 import axoloti.inlets.InletInstance;
 import axoloti.inlets.InletInstanceZombie;
 import axoloti.outlets.OutletInstance;
 import axoloti.outlets.OutletInstanceZombie;
 import components.LabelComponent;
 import components.PopupIcon;
-import java.awt.Color;
 import static java.awt.Component.LEFT_ALIGNMENT;
-import java.awt.MenuItem;
 import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -35,6 +34,8 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.util.ArrayList;
 import javax.swing.BoxLayout;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import org.simpleframework.xml.Root;
 
 /**
@@ -59,15 +60,15 @@ public class AxoObjectInstanceZombie extends AxoObjectInstanceAbstract {
         super.PostConstructor();
         LabelComponent idlbl = new LabelComponent(typeName);
         idlbl.setAlignmentX(LEFT_ALIGNMENT);
+        idlbl.setForeground(Theme.getCurrentTheme().Object_TitleBar_Foreground);
 
         final PopupIcon popupIcon = new PopupIcon();
         popupIcon.setPopupIconListener(
                 new PopupIcon.PopupIconListener() {
                     @Override
                     public void ShowPopup() {
-                        if (popup.getParent() == null) {
-                            popupIcon.add(popup);
-                        }
+                        JPopupMenu popup = CreatePopupMenu();
+                        popupIcon.add(popup);
                         popup.show(popupIcon,
                                 0, popupIcon.getHeight());
                     }
@@ -76,27 +77,11 @@ public class AxoObjectInstanceZombie extends AxoObjectInstanceAbstract {
         Titlebar.add(idlbl);
 
         Titlebar.setToolTipText("<html>" + "Unresolved object!");
-        MenuItem popm_substitute = new MenuItem("replace");
-        popm_substitute.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                ((PatchGUI) patch).ShowClassSelector(AxoObjectInstanceZombie.this.getLocation(), AxoObjectInstanceZombie.this, null);
-            }
-        });
-        popup.add(popm_substitute);
-        MenuItem popm_editInstanceName = new MenuItem("edit instance name");
-        popm_editInstanceName.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
-                addInstanceNameEditor();
-            }
-        });
-        popup.add(popm_editInstanceName);
         Titlebar.setAlignmentX(LEFT_ALIGNMENT);
         add(Titlebar);
 
         setOpaque(true);
-        setBackground(Color.red);
+        setBackground(Theme.getCurrentTheme().Object_Zombie_Background);
         setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
         InstanceLabel = new LabelComponent(getInstanceName());
         InstanceLabel.setAlignmentX(LEFT_ALIGNMENT);
@@ -125,14 +110,36 @@ public class AxoObjectInstanceZombie extends AxoObjectInstanceAbstract {
             }
         });
         add(InstanceLabel);
+        setLocation(x, y);
 
         resizeToGrid();
     }
 
     @Override
+    JPopupMenu CreatePopupMenu() {
+        JPopupMenu popup = super.CreatePopupMenu();
+        JMenuItem popm_substitute = new JMenuItem("replace");
+        popm_substitute.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                ((PatchGUI) patch).ShowClassSelector(AxoObjectInstanceZombie.this.getLocation(), AxoObjectInstanceZombie.this, null);
+            }
+        });
+        popup.add(popm_substitute);
+        JMenuItem popm_editInstanceName = new JMenuItem("edit instance name");
+        popm_editInstanceName.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent ae) {
+                addInstanceNameEditor();
+            }
+        });
+        popup.add(popm_editInstanceName);
+        return popup;
+    }
+
+    @Override
     public void setInstanceName(String s) {
         super.setInstanceName(s);
-//        InstanceLabel.doLayout();
         resizeToGrid();
         repaint();
     }
@@ -172,6 +179,11 @@ public class AxoObjectInstanceZombie extends AxoObjectInstanceAbstract {
         outletInstances.add(i);
         resizeToGrid();
         return i;
+    }
+    
+    @Override
+    public String GenerateClass(String ClassName, String OnParentAccess, Boolean enableOnParent) {
+        return "\n#error \"unresolved object: " + getInstanceName() + " in patch: " + getPatch().getFileNamePath() + "\"\n";
     }
 
     @Override

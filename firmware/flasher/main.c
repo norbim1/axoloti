@@ -19,8 +19,6 @@
 #include "ch.h"
 #include "hal.h"
 #include "chprintf.h"
-#include "shell.h"
-#include "string.h"
 #include "ui.h"
 #include "axoloti_control.h"
 #include "axoloti_board.h"
@@ -36,7 +34,7 @@
 extern int _vectors;
 
 #define AXOLOTICONTROL FALSE
-#define SERIALDEBUG TRUE
+//#define SERIALDEBUG TRUE
 
 #if SERIALDEBUG
 #define DBGPRINTCHAR(x) sdPut(&SD2,x);   //chThdSleepMilliseconds(1);
@@ -109,18 +107,6 @@ void DispayAbortErr(int err) {
 }
 
 int main(void) {
-  // copy vector table
-  memcpy((char *)0x20000000, (const char *)&_vectors, 0x200);
-  // remap SRAM1 to 0x00000000
-  SYSCFG->MEMRMP |= 0x03;
-
-//  FMC_SDRAMDeInit(0);
-//  RCC->AHB3RSTR |= 1; //RCC_AHB3RSTR_FMCRST
-  RCC->AHB3ENR |= 1; //RCC_AHB3ENR_FMCEN;
-
-//  HAL_DeInit();
-//  HAL_Init();
-
   watchdog_feed();
   halInit();
 

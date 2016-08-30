@@ -25,6 +25,8 @@ import axoloti.MainFrame;
 import static axoloti.MainFrame.prefs;
 import axoloti.PatchFrame;
 import axoloti.PatchGUI;
+import axoloti.SDCardInfo;
+import axoloti.SDFileInfo;
 import axoloti.USBBulkConnection;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -64,6 +66,8 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
 
     final String fileExtension = ".axb";
 
+    boolean dirty = false;
+
     ArrayList<File> files;
 
     /**
@@ -77,7 +81,7 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
         DocumentWindowList.RegisterWindow(this);
         USBBulkConnection.GetConnection().addConnectionStatusListener(this);
         jTable1.setModel(new AbstractTableModel() {
-            private String[] columnNames = {"Index", "File", "on sdcard"};
+            private final String[] columnNames = {"Index", "File", "on sdcard"};
 
             @Override
             public int getColumnCount() {
@@ -119,6 +123,7 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
                             File f = new File(svalue);
                             if (f.exists() && f.isFile() && f.canRead()) {
                                 files.set(rowIndex, f);
+                                setDirty();
                                 refresh();
                             }
                         }
@@ -136,16 +141,39 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
                     case 0:
                         returnValue = Integer.toString(rowIndex);
                         break;
-                    case 1:
-                        if (files.get(rowIndex) != null) {
-                            returnValue = toRelative(files.get(rowIndex));
+                    case 1: {
+                        File f = files.get(rowIndex);
+                        if (f != null) {
+                            returnValue = toRelative(f);
                         } else {
                             returnValue = "";
                         }
                         break;
-                    case 2:
-                        returnValue = "";
+                    }
+                    case 2: {
+                        File f = files.get(rowIndex);
+                        if (f != null) {
+                            boolean en = f.exists();
+                            String fn = f.getName();
+                            int i = fn.lastIndexOf('.');
+                            if (i > 0) {
+                                fn = fn.substring(0, i);
+                            }
+                            SDFileInfo sdfi = SDCardInfo.getInstance().find("/" + fn + "/patch.bin");
+                            if (sdfi != null) {
+                                if (en) {
+                                    returnValue = "resolved locally, and exists on sdcard";
+                                } else {
+                                    returnValue = "UNresolved locally, but exists on sdcard";
+                                }
+                            } else if (en) {
+                                returnValue = "resolved locally, not on sdcard";
+                            } else {
+                                returnValue = "UNresolved locally, not on sdcard";
+                            }
+                        }
                         break;
+                    }
                 }
 
                 return returnValue;
@@ -163,21 +191,29 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
         jTable1.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
             @Override
             public void valueChanged(ListSelectionEvent e) {
-                int row = jTable1.getSelectedRow();
-                if (row < 0) {
-                    jButtonUp.setEnabled(false);
-                    jButtonDown.setEnabled(false);
-                    jButtonOpen.setEnabled(false);
-                } else {
-                    jButtonUp.setEnabled(row > 0);
-                    jButtonDown.setEnabled(row < files.size() - 1);
-                    jButtonOpen.setEnabled(true);
-                }
+                reflectSelection(jTable1.getSelectedRow());
             }
         });
-
+        reflectSelection(-1);
     }
 
+    final void reflectSelection(int row){
+        if (row < 0) {
+            jButtonUp.setEnabled(false);
+            jButtonDown.setEnabled(false);
+            jButtonOpen.setEnabled(false);
+            jButtonRemove.setEnabled(false);
+        } else {
+            jButtonUp.setEnabled(row > 0);
+            jButtonDown.setEnabled(row < files.size() - 1);
+            File f = files.get(row);
+            boolean en = (f != null) && (f.exists());
+            jButtonOpen.setEnabled(en);
+            jButtonUpload.setEnabled(en);
+            jButtonRemove.setEnabled(true);
+        }        
+    }
+    
     public void refresh() {
         jTable1.revalidate();
         jTable1.repaint();
@@ -185,12 +221,14 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
 
     String toRelative(File f) {
         if (FilenamePath != null && !FilenamePath.isEmpty()) {
-            Path pathAbsolute = Paths.get(f.getPath());
+            Path path = Paths.get(f.getPath());
             Path pathBase = Paths.get(new File(FilenamePath).getParent());
-            Path pathRelative = pathBase.relativize(pathAbsolute);
-//            String base = new File(FilenamePath).getParent();
-//            return new File(base).toURI().relativize(f.toURI()).getPath();
-            return pathRelative.toString();
+            if (path.isAbsolute()) {
+                Path pathRelative = pathBase.relativize(path);
+                return pathRelative.toString();
+            } else {
+                return path.toString();
+            }
         } else {
             return f.getAbsolutePath();
         }
@@ -219,25 +257,21 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
     }
 
     void Open(File f) throws IOException {
-        try {
-            FilenamePath = f.getPath();
-            InputStream fs = new FileInputStream(f);
-            BufferedReader fbs = new BufferedReader(new InputStreamReader(fs));
-            String s;
-            files = new ArrayList<File>();
-            while ((s = fbs.readLine())
-                    != null) {
-                File ff = fromRelative(s);
-                if (ff != null) {
-                    files.add(ff);
-                }
+        FilenamePath = f.getPath();
+        InputStream fs = new FileInputStream(f);
+        BufferedReader fbs = new BufferedReader(new InputStreamReader(fs));
+        String s;
+        files = new ArrayList<File>();
+        while ((s = fbs.readLine())
+                != null) {
+            File ff = fromRelative(s);
+            if (ff != null) {
+                files.add(ff);
             }
-            fs.close();
-            refresh();
-            setTitle(FilenamePath);
-        } catch (FileNotFoundException ex) {
-            Logger.getLogger(PatchBank.class.getName()).log(Level.SEVERE, null, ex);
         }
+        fs.close();
+        refresh();
+        setTitle(FilenamePath);
     }
 
     void Save(File f) {
@@ -249,6 +283,7 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
                 pw.println(fn);
             }
             pw.close();
+            clearDirty();
         } catch (FileNotFoundException ex) {
             Logger.getLogger(PatchBank.class
                     .getName()).log(Level.SEVERE, null, ex);
@@ -373,7 +408,15 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
     }
 
     boolean isDirty() {
-        return true;
+        return dirty;
+    }
+
+    void setDirty() {
+        dirty = true;
+    }
+
+    void clearDirty() {
+        dirty = false;
     }
 
     public void Close() {
@@ -427,6 +470,7 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
         jPanel1 = new javax.swing.JPanel();
         jButtonUploadBank = new javax.swing.JButton();
         jLabel1 = new javax.swing.JLabel();
+        jUploadAll = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         jTable1 = new javax.swing.JTable();
         jPanel2 = new javax.swing.JPanel();
@@ -462,6 +506,13 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
 
         jLabel1.setText("Not (fully) implemented yet!");
 
+        jUploadAll.setText("Upload Patch Bank");
+        jUploadAll.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jUploadAllActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -469,9 +520,11 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(jLabel1)
-                .addGap(18, 18, 18)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jButtonUploadBank)
-                .addContainerGap(237, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 108, Short.MAX_VALUE)
+                .addComponent(jUploadAll)
+                .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -479,7 +532,8 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 27, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jButtonUploadBank))
+                    .addComponent(jButtonUploadBank)
+                    .addComponent(jUploadAll))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -508,7 +562,7 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
                 return canEdit [columnIndex];
             }
         });
-        jTable1.setColumnSelectionAllowed(true);
+        jTable1.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         jTable1.getTableHeader().setReorderingAllowed(false);
         jScrollPane1.setViewportView(jTable1);
         jTable1.getColumnModel().getSelectionModel().setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
@@ -572,7 +626,7 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
                 .addComponent(jButtonAdd)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jButtonOpen)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 12, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 43, Short.MAX_VALUE)
                 .addComponent(jButtonUpload)
                 .addContainerGap())
         );
@@ -648,6 +702,7 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
         File o = files.remove(row);
         files.add(row - 1, o);
         jTable1.setRowSelectionInterval(row - 1, row - 1);
+        setDirty();
         refresh();
     }//GEN-LAST:event_jButtonUpActionPerformed
 
@@ -662,6 +717,7 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
         File o = files.remove(row);
         files.add(row + 1, o);
         jTable1.setRowSelectionInterval(row + 1, row + 1);
+        setDirty();
         refresh();
     }//GEN-LAST:event_jButtonDownActionPerformed
 
@@ -671,6 +727,7 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
             return;
         }
         files.remove(row);
+        setDirty();
         refresh();
     }//GEN-LAST:event_jButtonRemoveActionPerformed
 
@@ -682,6 +739,7 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
         int returnVal = fc.showOpenDialog(this);
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             files.add(fc.getSelectedFile());
+            setDirty();
             refresh();
         }
     }//GEN-LAST:event_jButtonAddActionPerformed
@@ -696,18 +754,43 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
         }
     }//GEN-LAST:event_jButtonOpenActionPerformed
 
-    private void jButtonUploadActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonUploadActionPerformed
-        File f = files.get(jTable1.getSelectedRow());
+    void UploadOneFile(File f) {
         if (!f.isFile() || !f.canRead()) {
             return;
         }
         PatchFrame pf = PatchGUI.OpenPatchInvisible(f);
-        PatchGUI p = pf.getPatch();
-        p.WriteCode();
-        p.Compile();
-        p.UploadToSDCard();
-        pf.Close();
+        if (pf != null) {
+            boolean isVisible = pf.isVisible();
+            PatchGUI p = pf.getPatch();
+            p.WriteCode();
+            p.Compile();
+            p.UploadToSDCard();
+            if (!isVisible) {
+                pf.Close();
+            }
+            QCmdProcessor.getQCmdProcessor().WaitQueueFinished();
+        }
+    }
+
+
+    private void jButtonUploadActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonUploadActionPerformed
+        File f = files.get(jTable1.getSelectedRow());
+        UploadOneFile(f);
     }//GEN-LAST:event_jButtonUploadActionPerformed
+
+    private void jUploadAllActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jUploadAllActionPerformed
+        Logger.getLogger(MainFrame.class.getName()).log(Level.INFO, "Uploading patch bank file");
+        QCmdProcessor processor = MainFrame.mainframe.getQcmdprocessor();
+        if (USBBulkConnection.GetConnection().isConnected()) {
+            processor.AppendToQueue(new QCmdUploadFile(new ByteArrayInputStream(GetContents()), "/index.axb"));
+        }
+
+        for (File f : files) {
+            Logger.getLogger(MainFrame.class.getName()).log(Level.INFO, "Compiling and uploading : {0}", f.getName());
+            UploadOneFile(f);
+        }
+        Logger.getLogger(MainFrame.class.getName()).log(Level.INFO, "Patch bank uploaded");
+    }//GEN-LAST:event_jUploadAllActionPerformed
 
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -729,6 +812,7 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JPopupMenu.Separator jSeparator1;
     private javax.swing.JTable jTable1;
+    private javax.swing.JButton jUploadAll;
     private axoloti.menus.WindowMenu windowMenu1;
     // End of variables declaration//GEN-END:variables
 
@@ -737,16 +821,20 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
         return this;
     }
 
+    public void ShowConnect1(boolean status){
+        jButtonUploadBank.setEnabled(status);
+        jButtonUpload.setEnabled(status);
+        jUploadAll.setEnabled(status);
+    }
+    
     @Override
     public void ShowConnect() {
-        jButtonUploadBank.setEnabled(true);
-        jButtonUpload.setEnabled(true);
+        ShowConnect1(true);
     }
 
     @Override
     public void ShowDisconnect() {
-        jButtonUploadBank.setEnabled(false);
-        jButtonUpload.setEnabled(false);
+        ShowConnect1(false);
     }
 
     static public void OpenBank(File f) {
@@ -755,7 +843,8 @@ public class PatchBank extends javax.swing.JFrame implements DocumentWindow, Con
             pb.Open(f);
             pb.setVisible(true);
         } catch (IOException ex) {
-            Logger.getLogger(PatchBank.class.getName()).log(Level.SEVERE, null, ex);
+            pb.Close();
+            Logger.getLogger(PatchBank.class.getName()).log(Level.SEVERE, "Patchbank file not found or not accessable:{0}", f.getName());
         }
     }
 

@@ -17,8 +17,8 @@
  */
 package components;
 
+import axoloti.Theme;
 import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -67,15 +67,16 @@ public class VGraphComponent extends JComponent {
 
     @Override
     public void paintComponent(Graphics g) {
+        super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         g2.setStroke(strokeThick);
-        g2.setColor(Color.white);
+        g2.setColor(Theme.getCurrentTheme().Component_Secondary);
         g2.fillRect(0, 0, length + 2, vsize + 2);
-        g2.setPaint(Color.LIGHT_GRAY);
+        g2.setPaint(Theme.getCurrentTheme().Patch_Unlocked_Background);
         g2.drawLine(0, y0, length, y0);
         g2.setPaint(getForeground());
         g2.drawRect(0, 0, length + 2, vsize + 2);

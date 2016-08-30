@@ -35,7 +35,7 @@ public class AxoObjectInstancePatcherObject extends AxoObjectInstance {
 
     AxoObjectEditor aoe;
     @Element(name = "object")
-    AxoObject ao;
+    AxoObjectPatcherObject ao;
     ButtonComponent BtnEdit;
 
     public AxoObjectInstancePatcherObject() {
@@ -45,11 +45,12 @@ public class AxoObjectInstancePatcherObject extends AxoObjectInstance {
         super(type, patch1, InstanceName1, location);
     }
 
+    @Override
     public void updateObj1() {
         if (ao == null) {
-            ao = new AxoObject();
+            ao = new AxoObjectPatcherObject();
             ao.id = "patch/object";
-            ao.sDescription = "description";
+            ao.sDescription = "";
         }
         setType(ao);
         /*
@@ -61,17 +62,13 @@ public class AxoObjectInstancePatcherObject extends AxoObjectInstance {
          */
     }
 
+    @Override
     public void updateObj() {
         if (ao != null) {
             ao.id = "patch/object";
             setType(ao);
             PostConstructor();
         }
-        for (Component cmp : getComponents()) {
-            cmp.doLayout();
-        }
-        doLayout();
-        invalidate();
         validate();
     }
     
@@ -82,13 +79,15 @@ public class AxoObjectInstancePatcherObject extends AxoObjectInstance {
    
     public void edit() {
         if (ao == null) {
-            ao = new AxoObject();
+            ao = new AxoObjectPatcherObject();
 //            ao.id = "id";
-            ao.sDescription = "description";
+            ao.sDescription = "";
         }
         if (aoe == null) {
             aoe = new AxoObjectEditor(ao);
-        } 
+        } else {
+            aoe.updateReferenceXML();
+        }
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
@@ -100,11 +99,6 @@ public class AxoObjectInstancePatcherObject extends AxoObjectInstance {
 
     public boolean isEditorOpen() {
         return aoe != null && aoe.isVisible();
-    }
-
-    @Override
-    public void ObjectModified(Object src) {
-        updateObj();
     }
 
     @Override
@@ -121,25 +115,14 @@ public class AxoObjectInstancePatcherObject extends AxoObjectInstance {
             }
         });
         add(BtnEdit);
-        for (Component cmp : getComponents()) {
-            cmp.doLayout();
-        }
         resizeToGrid();
     }
 
     @Override
-    public void Unlock() {
-        super.Unlock();
-        if (BtnEdit != null) {
-            BtnEdit.setEnabled(true);
-        }
-    }
-
-    @Override
-    public void Lock() {
-        super.Lock();
-        if (BtnEdit != null) {
-            BtnEdit.setEnabled(false);
+    public void Close() {
+        super.Close();
+        if (aoe != null) {
+            aoe.Close();
         }
     }
 }

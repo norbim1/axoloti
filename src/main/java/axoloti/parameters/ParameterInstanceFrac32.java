@@ -168,7 +168,6 @@ public abstract class ParameterInstanceFrac32<Tx extends ParameterFrac32> extend
                 modulators = null;
             }
         }
-        axoObj.patch.SetDirty();
     }
 
     public ArrayList<Modulation> getModulators() {

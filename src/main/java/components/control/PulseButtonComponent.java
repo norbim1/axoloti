@@ -17,8 +17,8 @@
  */
 package components.control;
 
+import axoloti.Theme;
 import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -87,6 +87,7 @@ public class PulseButtonComponent extends ACtrlComponent {
 
     @Override
     public void paintComponent(Graphics g) {
+        super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
@@ -103,7 +104,7 @@ public class PulseButtonComponent extends ACtrlComponent {
             g2.drawOval(2, 2, bsize - 5, bsize - 5);
             g2.fillOval(2, 2, bsize - 5, bsize - 5);
         } else {
-            g2.setColor(Color.white);
+            g2.setColor(Theme.getCurrentTheme().Component_Secondary);
             g2.fillOval(2, 2, bsize - 5, bsize - 5);
             g2.setPaint(getForeground());
             g2.drawOval(2, 2, bsize - 5, bsize - 5);
@@ -114,14 +115,13 @@ public class PulseButtonComponent extends ACtrlComponent {
     public void setValue(double value) {
         if (this.value != value) {
             this.value = value;
-            repaint();
         }
         fireEvent();
+        repaint();
     }
 
     @Override
     public double getValue() {
         return value;
     }
-
 }

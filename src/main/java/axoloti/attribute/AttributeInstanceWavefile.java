@@ -22,6 +22,10 @@ import axoloti.object.AxoObjectInstance;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -35,6 +39,8 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import org.simpleframework.xml.Attribute;
 
 /**
@@ -54,8 +60,10 @@ public class AttributeInstanceWavefile extends AttributeInstance<AxoAttributeWav
 
     public AttributeInstanceWavefile(AxoAttributeWavefile param, AxoObjectInstance axoObj1) {
         super(param, axoObj1);
-//        PostConstructor();
+        this.axoObj = axoObj1;
     }
+
+    String valueBeforeAdjustment = "";
 
     @Override
     public void PostConstructor() {
@@ -69,10 +77,52 @@ public class AttributeInstanceWavefile extends AttributeInstance<AxoAttributeWav
         TFwaveFilename.setPreferredSize(d);
         TFwaveFilename.setSize(d);
         add(TFwaveFilename);
-        TFwaveFilename.addActionListener(new ActionListener() {
+        TFwaveFilename.addKeyListener(new KeyListener() {
             @Override
-            public void actionPerformed(ActionEvent ae) {
+            public void keyTyped(KeyEvent ke) {
+            }
+
+            @Override
+            public void keyReleased(KeyEvent ke) {
+            }
+
+            @Override
+            public void keyPressed(KeyEvent ke) {
+                repaint();
+            }
+        });
+        TFwaveFilename.getDocument().addDocumentListener(new DocumentListener() {
+
+            void update() {
                 waveFilename = TFwaveFilename.getText();
+            }
+
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                update();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                update();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                update();
+            }
+        });
+        TFwaveFilename.addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                valueBeforeAdjustment = TFwaveFilename.getText();
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                if (!TFwaveFilename.getText().equals(valueBeforeAdjustment)) {
+                    SetDirty();
+                }
             }
         });
     }

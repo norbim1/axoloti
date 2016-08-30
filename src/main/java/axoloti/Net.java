@@ -32,7 +32,8 @@ import java.awt.geom.QuadCurve2D;
 import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.JPanel;
+import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
 import org.simpleframework.xml.*;
 
 /**
@@ -40,7 +41,7 @@ import org.simpleframework.xml.*;
  * @author Johannes Taelman
  */
 @Root(name = "net")
-public class Net extends JPanel {
+public class Net extends JComponent {
 
     @ElementList(inline = true, required = false)
     ArrayList<OutletInstance> source;
@@ -56,7 +57,8 @@ public class Net extends JPanel {
         if (dest == null) {
             dest = new ArrayList<InletInstance>();
         }
-        setSize(5000, 5000);
+
+        setSize(1, 1);
         setLocation(0, 0);
         setOpaque(false);
     }
@@ -67,7 +69,6 @@ public class Net extends JPanel {
     }
 
     public void PostConstructor() {
-
         // InletInstances and OutletInstances actually already exist, need to replace dummies with the real ones
         ArrayList<OutletInstance> source2 = new ArrayList<OutletInstance>();
         for (OutletInstance i : source) {
@@ -107,6 +108,7 @@ public class Net extends JPanel {
         }
         source = source2;
         dest = dest2;
+        updateBounds();
     }
 
     public boolean isSelected() {
@@ -124,9 +126,11 @@ public class Net extends JPanel {
         for (InletInstance i : dest) {
             i.setHighlighted(selected);
         }
-        if (patch != null) {
-            this.repaint();
-        }
+        repaint();
+    }
+
+    public boolean getSelected() {
+        return this.selected;
     }
 
     public void connectInlet(InletInstance inlet) {
@@ -134,12 +138,14 @@ public class Net extends JPanel {
             return;
         }
         dest.add(inlet);
+        updateBounds();
     }
 
     public void connectOutlet(OutletInstance outlet) {
         if (outlet.GetObjectInstance().patch == patch) {
             source.add(outlet);
         }
+        updateBounds();
     }
 
     public boolean isValidNet() {
@@ -163,7 +169,7 @@ public class Net extends JPanel {
     Color GetColor() {
         Color c = GetDataType().GetColor();
         if (c == null) {
-            c = Color.DARK_GRAY;
+            c = Theme.getCurrentTheme().Cable_Default;
         }
         return c;
     }
@@ -174,16 +180,45 @@ public class Net extends JPanel {
     final static Stroke strokeBrokenDeselected = new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 0, dash, 0.f);
     final QuadCurve2D.Float curve = new QuadCurve2D.Float();
 
+    float CtrlPointY(float x1, float y1, float x2, float y2) {
+        return Math.max(y1, y2) + Math.abs(y2 - y1) * 0.1f + Math.abs(x2 - x1) * 0.1f;
+    }
+
     void DrawWire(Graphics2D g2, float x1, float y1, float x2, float y2) {
-        curve.setCurve(x1, y1, (x1 + x2) / 2, Math.max(y1, y2) + Math.abs(y2 - y1) * 0.1f + Math.abs(x2 - x1) * 0.1f, x2, y2);
+        curve.setCurve(x1, y1, (x1 + x2) / 2, CtrlPointY(x1, y1, x2, y2), x2, y2);
         g2.draw(curve);
+    }
+
+    public void updateBounds() {
+        int min_y = Integer.MAX_VALUE;
+        int min_x = Integer.MAX_VALUE;
+        int max_y = Integer.MIN_VALUE;
+        int max_x = Integer.MIN_VALUE;
+
+        for (InletInstance i : dest) {
+            Point p1 = i.getJackLocInCanvas();
+            min_x = Math.min(min_x, p1.x);
+            min_y = Math.min(min_y, p1.y);
+            max_x = Math.max(max_x, p1.x);
+            max_y = Math.max(max_y, p1.y);
+        }
+        for (OutletInstance i : source) {
+            Point p1 = i.getJackLocInCanvas();
+            min_x = Math.min(min_x, p1.x);
+            min_y = Math.min(min_y, p1.y);
+            max_x = Math.max(max_x, p1.x);
+            max_y = Math.max(max_y, p1.y);
+        }
+        int fudge = 8;
+        this.setBounds(min_x - fudge, min_y - fudge,
+                Math.max(1, max_x - min_x + (2 * fudge)),
+                (int)CtrlPointY(min_x, min_y, max_x, max_y) - min_y + (2 * fudge));
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         float shadowOffset = 0.5f;
-
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
@@ -210,8 +245,9 @@ public class Net extends JPanel {
             if (GetDataType() != null) {
                 c = GetDataType().GetColor();
             } else {
-                c = Color.BLACK;
+                c = Theme.getCurrentTheme().Cable_Shadow;
             }
+
             if (!source.isEmpty()) {
                 p0 = source.get(0).getJackLocInCanvas();
             } else if (!dest.isEmpty()) {
@@ -220,37 +256,31 @@ public class Net extends JPanel {
                 throw new Error("empty nets should not exist");
             }
         }
-        int lastSource = 0;
-        for (OutletInstance i : source) {
-//  Indicate latched connections
-            int j = patch.objectinstances.indexOf(i.GetObjectInstance());
-            if (j > lastSource) {
-                lastSource = j;
-            }
-            Point p1 = i.getJackLocInCanvas();
-            g2.setColor(Color.BLACK);
-            DrawWire(g2, p0.x + shadowOffset, p0.y + shadowOffset, p1.x + shadowOffset, p1.y + shadowOffset);
-            g2.setColor(c);
-            DrawWire(g2, p0.x, p0.y, p1.x, p1.y);
-        }
+
+        Point from = SwingUtilities.convertPoint(getPatchGui().Layers, p0, this);
         for (InletInstance i : dest) {
             Point p1 = i.getJackLocInCanvas();
-            g2.setColor(Color.BLACK);
-            DrawWire(g2, p0.x + shadowOffset, p0.y + shadowOffset, p1.x + shadowOffset, p1.y + shadowOffset);
+
+            Point to = SwingUtilities.convertPoint(getPatchGui().Layers, p1, this);
+            g2.setColor(Theme.getCurrentTheme().Cable_Shadow);
+            DrawWire(g2, from.x + shadowOffset, from.y + shadowOffset, to.x + shadowOffset, to.y + shadowOffset);
             g2.setColor(c);
-            DrawWire(g2, p0.x, p0.y, p1.x, p1.y);
-//  Indicate latched connections
-//<editor-fold defaultstate="collapsed" desc="unused">
-//            if (false) {
-//                int j = patch.objectinstances.indexOf(i.axoObj);
-//                if (j <= lastSource) {
-//                    int x = (p0.x + p1.x) / 2;
-//                    int y = (int) (0.5f * (p0.y + p1.y) + Math.abs(p1.y - p0.y) * 0.3f + Math.abs(p1.x - p0.x) * 0.05f);
-//                    g2.fillOval(x - 5, y - 5, 10, 10);
-//                }
-//            }
-//</editor-fold>
+            DrawWire(g2, from.x, from.y, to.x, to.y);
         }
+        for (OutletInstance i : source) {
+            Point p1 = i.getJackLocInCanvas();
+
+            Point to = SwingUtilities.convertPoint(getPatchGui().Layers, p1, this);
+            g2.setColor(Theme.getCurrentTheme().Cable_Shadow);
+            DrawWire(g2, from.x + shadowOffset, from.y + shadowOffset, to.x + shadowOffset, to.y + shadowOffset);
+            g2.setColor(c);
+            DrawWire(g2, from.x, from.y, to.x, to.y);
+
+        }
+    }
+
+    public PatchGUI getPatchGui() {
+        return (PatchGUI) patch;
     }
 
     public boolean NeedsLatch() {

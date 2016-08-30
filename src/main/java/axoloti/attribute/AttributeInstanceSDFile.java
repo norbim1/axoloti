@@ -23,10 +23,10 @@ import axoloti.object.AxoObjectInstance;
 import axoloti.utils.Constants;
 import components.ButtonComponent;
 import java.awt.Dimension;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.File;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import org.simpleframework.xml.Attribute;
 
 /**
@@ -54,7 +56,10 @@ public class AttributeInstanceSDFile extends AttributeInstanceString<AxoAttribut
 
     public AttributeInstanceSDFile(AxoAttributeSDFile param, AxoObjectInstance axoObj1) {
         super(param, axoObj1);
+        this.axoObj = axoObj1;
     }
+
+    String valueBeforeAdjustment = "";
 
     @Override
     public void PostConstructor() {
@@ -63,26 +68,43 @@ public class AttributeInstanceSDFile extends AttributeInstanceString<AxoAttribut
         Dimension d = TFFileName.getSize();
         d.width = 128;
         d.height = 22;
-        TFFileName.setFont(Constants.font);
+        TFFileName.setFont(Constants.FONT);
         TFFileName.setMaximumSize(d);
         TFFileName.setMinimumSize(d);
         TFFileName.setPreferredSize(d);
         TFFileName.setSize(d);
         add(TFFileName);
-        TFFileName.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent ae) {
+        TFFileName.getDocument().addDocumentListener(new DocumentListener() {
+            void update() {
                 fileName = TFFileName.getText();
+            }
+
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                update();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                update();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                update();
             }
         });
         TFFileName.addFocusListener(new FocusListener() {
             @Override
             public void focusGained(FocusEvent e) {
+                valueBeforeAdjustment = TFFileName.getText();
             }
 
             @Override
             public void focusLost(FocusEvent e) {
-                fileName = TFFileName.getText();
+                if (!TFFileName.getText().equals(valueBeforeAdjustment)) {
+                    SetDirty();
+                }
             }
         });
         ButtonChooseFile = new ButtonComponent("choose");
@@ -94,7 +116,10 @@ public class AttributeInstanceSDFile extends AttributeInstanceString<AxoAttribut
                 if (returnVal == JFileChooser.APPROVE_OPTION) {
                     String f = toRelative(fc.getSelectedFile());
                     TFFileName.setText(f);
-                    fileName = f;
+                    if (!f.equals(fileName)) {
+                        fileName = f;
+                        SetDirty();
+                    }
                 }
             }
         });
@@ -104,10 +129,10 @@ public class AttributeInstanceSDFile extends AttributeInstanceString<AxoAttribut
     @Override
     public String CValue() {
         File f = getFile();
-        if (f != null) {
-            return f.getName();
+        if ((f != null) && f.exists()) {
+            return f.getName().replaceAll("\\\\", "\\/");
         } else {
-            return fileName;
+            return fileName.replaceAll("\\\\", "\\/");
         }
     }
 
@@ -158,6 +183,8 @@ public class AttributeInstanceSDFile extends AttributeInstanceString<AxoAttribut
         Path basePath = FileSystems.getDefault().getPath(GetObjectInstance().getPatch().getFileNamePath());
         Path parent = basePath.getParent();
         if (parent == null) {
+            return new File(fileName);
+        } else if (fileName == null || fileName.length() == 0) {
             return null;
         }
         Path resolvedPath = parent.resolve(fileName);
@@ -168,10 +195,17 @@ public class AttributeInstanceSDFile extends AttributeInstanceString<AxoAttribut
     }
 
     String toRelative(File f) {
+        if (f == null) {
+            return "";
+        }
         String FilenamePath = GetObjectInstance().getPatch().getFileNamePath();
         if (FilenamePath != null && !FilenamePath.isEmpty()) {
             Path pathAbsolute = Paths.get(f.getPath());
-            Path pathBase = Paths.get(new File(FilenamePath).getParent());
+            String parent = new File(FilenamePath).getParent();
+            if (parent == null) {
+                return f.getPath();
+            }
+            Path pathBase = Paths.get(parent);
             Path pathRelative = pathBase.relativize(pathAbsolute);
             return pathRelative.toString();
         } else {

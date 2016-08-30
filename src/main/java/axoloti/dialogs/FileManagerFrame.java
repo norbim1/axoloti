@@ -43,7 +43,9 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 import qcmds.QCmdCreateDirectory;
 import qcmds.QCmdDeleteFile;
+import qcmds.QCmdGetFileList;
 import qcmds.QCmdProcessor;
+import qcmds.QCmdStop;
 import qcmds.QCmdUploadFile;
 
 /**
@@ -57,6 +59,7 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
      */
     public FileManagerFrame() {
         initComponents();
+        fileMenu1.initComponents();
         USBBulkConnection.GetConnection().addConnectionStatusListener(this);
         setIconImage(new ImageIcon(getClass().getResource("/resources/axoloti_icon.png")).getImage());
         jLabelSDInfo.setText("");
@@ -179,11 +182,24 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
                 int row = jFileTable.getSelectedRow();
                 if (row < 0) {
                     jButtonDelete.setEnabled(false);
+                    ButtonUploadDefaultName();
                 } else {
                     jButtonDelete.setEnabled(true);
+                    SDFileInfo f = SDCardInfo.getInstance().getFiles().get(row);
+                    if (f != null && f.isDirectory()) {
+                        jButtonUpload.setText("Upload to " + f.getFilename() + " ...");
+                        jButtonCreateDir.setText("Create directory in " + f.getFilename() + " ...");
+                    } else {
+                        ButtonUploadDefaultName();
+                    }
                 }
             }
         });
+    }
+
+    void ButtonUploadDefaultName() {
+        jButtonUpload.setText("Upload ...");
+        jButtonCreateDir.setText("Create directory ...");
     }
 
     /**
@@ -203,7 +219,7 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
         jButtonDelete = new javax.swing.JButton();
         jButtonCreateDir = new javax.swing.JButton();
         jMenuBar1 = new javax.swing.JMenuBar();
-        jMenu1 = new javax.swing.JMenu();
+        fileMenu1 = new axoloti.menus.FileMenu();
         jMenu2 = new javax.swing.JMenu();
         windowMenu1 = new axoloti.menus.WindowMenu();
 
@@ -246,6 +262,7 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
         }
 
         jButton1Refresh.setText("Refresh");
+        jButton1Refresh.setEnabled(false);
         jButton1Refresh.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButton1RefreshActionPerformed(evt);
@@ -255,6 +272,7 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
         jLabelSDInfo.setText("jLabel1");
 
         jButtonUpload.setText("Upload...");
+        jButtonUpload.setEnabled(false);
         jButtonUpload.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButtonUploadActionPerformed(evt);
@@ -262,6 +280,7 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
         });
 
         jButtonDelete.setText("Delete");
+        jButtonDelete.setEnabled(false);
         jButtonDelete.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButtonDeleteActionPerformed(evt);
@@ -269,14 +288,15 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
         });
 
         jButtonCreateDir.setText("Create directory...");
+        jButtonCreateDir.setEnabled(false);
         jButtonCreateDir.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jButtonCreateDirActionPerformed(evt);
             }
         });
 
-        jMenu1.setText("File");
-        jMenuBar1.add(jMenu1);
+        fileMenu1.setText("File");
+        jMenuBar1.add(fileMenu1);
 
         jMenu2.setText("Edit");
         jMenuBar1.add(jMenu2);
@@ -324,8 +344,9 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
 
     void RequestRefresh() {
         if (USBBulkConnection.GetConnection().isConnected()) {
-            USBBulkConnection.GetConnection().TransmitStop();
-            USBBulkConnection.GetConnection().TransmitGetFileList();
+            USBBulkConnection.GetConnection().AppendToQueue(new QCmdStop());
+            USBBulkConnection.GetConnection().WaitSync();
+            USBBulkConnection.GetConnection().AppendToQueue(new QCmdGetFileList());
         }
     }
 
@@ -335,6 +356,14 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
 
     private void jButtonUploadActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonUploadActionPerformed
         QCmdProcessor processor = QCmdProcessor.getQCmdProcessor();
+        String dir = "/";
+        int rowIndex = jFileTable.getSelectedRow();
+        if (rowIndex >= 0) {
+            SDFileInfo f = SDCardInfo.getInstance().getFiles().get(rowIndex);
+            if (f != null && f.isDirectory()) {
+                dir = f.getFilename();
+            }
+        }
         if (USBBulkConnection.GetConnection().isConnected()) {
             final JFileChooser fc = new JFileChooser(prefs.getCurrentFileDirectory());
             int returnVal = fc.showOpenDialog(this);
@@ -346,7 +375,7 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
                         Logger.getLogger(FileManagerFrame.class.getName()).log(Level.SEVERE, "Can't read file");
                         return;
                     }
-                    processor.AppendToQueue(new QCmdUploadFile(f, f.getName()));
+                    processor.AppendToQueue(new QCmdUploadFile(f, dir + f.getName()));
                 }
             }
         }
@@ -378,10 +407,18 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
     }//GEN-LAST:event_jButtonDeleteActionPerformed
 
     private void jButtonCreateDirActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonCreateDirActionPerformed
+        String dir = "/";
+        int rowIndex = jFileTable.getSelectedRow();
+        if (rowIndex >= 0) {
+            SDFileInfo f = SDCardInfo.getInstance().getFiles().get(rowIndex);
+            if (f != null && f.isDirectory()) {
+                dir = f.getFilename();
+            }
+        }
         String fn = JOptionPane.showInputDialog(this, "Directory name?");
         if (fn != null && !fn.isEmpty()) {
             QCmdProcessor processor = QCmdProcessor.getQCmdProcessor();
-            processor.AppendToQueue(new QCmdCreateDirectory(fn));
+            processor.AppendToQueue(new QCmdCreateDirectory(dir + fn));
         }
 
     }//GEN-LAST:event_jButtonCreateDirActionPerformed
@@ -396,36 +433,35 @@ public class FileManagerFrame extends javax.swing.JFrame implements ConnectionSt
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private axoloti.menus.FileMenu fileMenu1;
     private javax.swing.JButton jButton1Refresh;
     private javax.swing.JButton jButtonCreateDir;
     private javax.swing.JButton jButtonDelete;
     private javax.swing.JButton jButtonUpload;
     private javax.swing.JTable jFileTable;
     private javax.swing.JLabel jLabelSDInfo;
-    private javax.swing.JMenu jMenu1;
     private javax.swing.JMenu jMenu2;
     private javax.swing.JMenuBar jMenuBar1;
     private javax.swing.JScrollPane jScrollPane1;
     private axoloti.menus.WindowMenu windowMenu1;
     // End of variables declaration//GEN-END:variables
 
+    void ShowConnect(boolean status) {
+        jButton1Refresh.setEnabled(status);
+        jButtonUpload.setEnabled(status);
+        jFileTable.setEnabled(status);
+        jLabelSDInfo.setText("");
+        jButtonDelete.setEnabled(status);
+        jButtonCreateDir.setEnabled(status);
+    }
+
     @Override
     public void ShowConnect() {
-        jButton1Refresh.setEnabled(true);
-        jButtonUpload.setEnabled(true);
-        jFileTable.setEnabled(true);
-        jLabelSDInfo.setText("");
-        jButtonDelete.setEnabled(true);
-        jButtonCreateDir.setEnabled(true);
+        ShowConnect(true);
     }
 
     @Override
     public void ShowDisconnect() {
-        jButton1Refresh.setEnabled(false);
-        jButtonUpload.setEnabled(false);
-        jFileTable.setEnabled(false);
-        jLabelSDInfo.setText("");
-        jButtonDelete.setEnabled(false);
-        jButtonCreateDir.setEnabled(false);
+        ShowConnect(false);
     }
 }

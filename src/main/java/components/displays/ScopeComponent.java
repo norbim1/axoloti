@@ -17,8 +17,8 @@
  */
 package components.displays;
 
+import axoloti.Theme;
 import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -55,13 +55,14 @@ public class ScopeComponent extends ADispComponent {
 
     @Override
     public void paintComponent(Graphics g) {
+        super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         g2.setStroke(strokeThick);
-        g2.setColor(Color.white);
+        g2.setColor(Theme.getCurrentTheme().Component_Secondary);
         g2.fillRect(0, 0, length + 2, vsize + 2);
         g2.setPaint(getForeground());
         g2.drawRect(0, 0, length + 2, vsize + 2);
@@ -69,7 +70,7 @@ public class ScopeComponent extends ADispComponent {
         if (index > 1) {
             g2.drawPolyline(xvalue, value, index - 1);
         }
-        g2.setColor(Color.GRAY);
+        g2.setColor(Theme.getCurrentTheme().Component_Mid);
         if (index < length - 2) {
             g2.drawPolyline(java.util.Arrays.copyOfRange(xvalue, index, length - 1),
                     java.util.Arrays.copyOfRange(value, index, length - 1), length - index - 1);

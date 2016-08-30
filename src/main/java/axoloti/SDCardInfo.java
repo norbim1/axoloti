@@ -91,7 +91,22 @@ public class SDCardInfo {
             busy = false;
             return;
         }
-        SDFileInfo sdf = new SDFileInfo(fname, date, size);
+        SDFileInfo sdf = null;
+        synchronized (files) {
+            for (SDFileInfo f:files){
+                if (f.filename.equalsIgnoreCase(fname)) {
+                    // already present
+                    sdf = f;
+                }
+            }
+        }
+        if (sdf != null){
+            sdf.size = size;
+            sdf.timestamp = date;
+            MainFrame.mainframe.filemanager.refresh();
+            return;
+        }
+        sdf = new SDFileInfo(fname, date, size);
         synchronized (files) {
             files.add(sdf);
         }
@@ -115,12 +130,26 @@ public class SDCardInfo {
         }
     }
 
+    public SDFileInfo find(String name) {
+        synchronized (files) {
+            if (!name.startsWith("/")) {
+                name = "/" + name;
+            }
+            for (SDFileInfo f : files) {
+                if (f.filename.equalsIgnoreCase(name)) {
+                    return f;
+                }
+            }
+        }
+        return null;
+    }
+    
+    
     public boolean exists(String name, long timestampEpoch, long size) {
         synchronized (files) {
             if (!name.startsWith("/")) {
                 name = "/" + name;
             }
-            System.out.println("exists? " + name);
             for (SDFileInfo f : files) {
                 if (f.filename.equalsIgnoreCase(name) && f.size == size && (Math.abs(f.timestamp.getTimeInMillis() - timestampEpoch) < 3000)) {
                     return true;

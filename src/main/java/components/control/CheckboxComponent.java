@@ -17,8 +17,9 @@
  */
 package components.control;
 
+import axoloti.Theme;
+import axoloti.utils.KeyUtils;
 import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -77,35 +78,44 @@ public class CheckboxComponent extends ACtrlComponent {
                 selIndex = i;
                 repaint();
             }
+            e.consume();
         }
     }
 
     @Override
     protected void mousePressed(MouseEvent e) {
-        grabFocus();
-        if (e.getButton() == 1) {
-            int i = e.getX() / bsize;
-            if (i < n) {
-                dragAction = true;
-                if (e.isShiftDown()) {
-                    dragValue = GetFieldValue(i);
-                } else {
-                    dragValue = !GetFieldValue(i);
+        if (!e.isPopupTrigger()) {
+            grabFocus();
+            if (e.getButton() == 1) {
+                int i = e.getX() / bsize;
+                if (i < n) {
+                    fireEventAdjustmentBegin();
+                    dragAction = true;
+                    if (e.isShiftDown()) {
+                        dragValue = GetFieldValue(i);
+                    } else {
+                        dragValue = !GetFieldValue(i);
+                    }
+                    SetFieldValue(i, dragValue);
+                    selIndex = i;
                 }
-                SetFieldValue(i, dragValue);
-                selIndex = i;
             }
+            e.consume();
         }
     }
 
     @Override
     protected void mouseReleased(MouseEvent e) {
+        if (!e.isPopupTrigger()) {
+            fireEventAdjustmentFinished();
+            e.consume();
+        }
         dragAction = false;
     }
 
     @Override
     public void keyPressed(KeyEvent ke) {
-        if (ke.isAltDown() || ke.isAltGraphDown() || ke.isControlDown() || ke.isMetaDown()) {
+        if (KeyUtils.isIgnoreModifierDown(ke)) {
             return;
         }
         switch (ke.getKeyCode()) {
@@ -128,37 +138,51 @@ public class CheckboxComponent extends ACtrlComponent {
                 return;
             }
             case KeyEvent.VK_UP: {
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, true);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 return;
             }
             case KeyEvent.VK_DOWN: {
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, false);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 return;
             }
             case KeyEvent.VK_PAGE_UP: {
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, true);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 return;
             }
             case KeyEvent.VK_PAGE_DOWN: {
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, false);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 return;
             }
         }
         switch (ke.getKeyChar()) {
             case '0':
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, false);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 break;
             case '1':
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, true);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 break;
             case ' ':
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, !GetFieldValue(selIndex));
+                fireEventAdjustmentFinished();
                 ke.consume();
                 break;
         }
@@ -169,15 +193,16 @@ public class CheckboxComponent extends ACtrlComponent {
 
     @Override
     public void paintComponent(Graphics g) {
+        super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         if (isEnabled()) {
-            g2.setColor(Color.white);
+            g2.setColor(Theme.getCurrentTheme().Component_Secondary);
         } else {
-            g2.setColor(getBackground());
+            g2.setColor(Theme.getCurrentTheme().Object_Default_Background);
         }
         g2.fillRect(0, 0, bsize * n, bsize + 1);
         g2.setPaint(getForeground());

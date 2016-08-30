@@ -125,6 +125,7 @@ void LogTextMessage(const char* format, ...) {
 }
 
 void PExTransmit(void) {
+ if ((usbGetDriverStateI(BDU1.config->usbp) == USB_ACTIVE) ) {
   if (!chOQIsEmptyI(&BDU1.oqueue)) {
     chThdSleepMilliseconds(1);
     BDU1.oqueue.q_notify(&BDU1.oqueue);
@@ -137,7 +138,11 @@ void PExTransmit(void) {
       ack[2] = dspLoadPct;
       ack[3] = patchMeta.patchID;
       ack[4] = sysmon_getVoltage10() + (sysmon_getVoltage50()<<16);
-      ack[5] = 0; // reserved
+      if (patchStatus) {
+        ack[5] = UNINITIALIZED;
+      } else {
+        ack[5] = loadPatchIndex;
+      }
       ack[6] = 0; // reserved
       chSequentialStreamWrite((BaseSequentialStream * )&BDU1,
                               (const unsigned char* )&ack[0], 7 * 4);
@@ -153,8 +158,7 @@ void PExTransmit(void) {
       exception_checkandreport();
       AckPending = 0;
     }
-    TransmitLCDoverUSB();
-    if (!patchStatus) {
+    if ((!patchStatus) && (connected)) {
       unsigned int i;
       for (i = 0; i < patchMeta.numPEx; i++) {
         if (patchMeta.pPExch[i].signals & 0x01) {
@@ -171,6 +175,7 @@ void PExTransmit(void) {
       }
     }
   }
+ }
 }
 
 char FileName[64];
@@ -539,6 +544,7 @@ void PExReceiveByte(unsigned char c) {
       else if (c == 's') { // start patch
         state = 0;
         header = 0;
+        loadPatchIndex = LIVE;
         StartPatch();
         AckPending = 1;
       }
@@ -1048,12 +1054,14 @@ void PExReceiveByte(unsigned char c) {
 }
 
 void PExReceive(void) {
+ if ((usbGetDriverStateI(BDU1.config->usbp) == USB_ACTIVE) ) {
   if (!AckPending) {
     unsigned char received;
     while (chnReadTimeout(&BDU1, &received, 1, TIME_IMMEDIATE)) {
       PExReceiveByte(received);
     }
   }
+ } 
 }
 
 /*

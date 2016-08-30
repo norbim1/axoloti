@@ -16,6 +16,7 @@
  * Axoloti. If not, see <http://www.gnu.org/licenses/>.
  */package axoloti.datatypes;
 
+import axoloti.Theme;
 import java.awt.Color;
 
 /**
@@ -23,6 +24,7 @@ import java.awt.Color;
  * @author jtaelman
  */
 public class Int32Ptr implements DataType {
+
     public static final Int32Ptr d = new Int32Ptr();
 
     @Override
@@ -42,7 +44,7 @@ public class Int32Ptr implements DataType {
 
     @Override
     public Color GetColor() {
-        return Color.magenta;
+        return Theme.getCurrentTheme().Cable_Int32Pointer;
     }
 
     @Override
@@ -70,9 +72,14 @@ public class Int32Ptr implements DataType {
         int hash = 13;
         return hash;
     }
-    
+
     @Override
     public boolean isPointer() {
         return true;
-    }        
+    }
+
+    @Override
+    public String UnconnectedSink() {
+        return "";
+    }
 }

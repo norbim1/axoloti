@@ -37,22 +37,22 @@
                 <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemSaveActionPerformed"/>
               </Events>
             </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemAddToLibrary">
+            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemRevert">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Revert"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemRevertActionPerformed"/>
+              </Events>
+            </MenuItem>
+            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemCopyToLibrary">
               <Properties>
                 <Property name="text" type="java.lang.String" editor="org.netbeans.modules.form.RADConnectionPropertyEditor">
-                  <Connection code="&quot;Add to Library...&quot;" type="code"/>
+                  <Connection code="&quot;Copy to Library...&quot;" type="code"/>
                 </Property>
               </Properties>
               <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemAddToLibraryActionPerformed"/>
-              </Events>
-            </MenuItem>
-            <MenuItem class="javax.swing.JMenuItem" name="jMenuItemApply">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Apply"/>
-              </Properties>
-              <Events>
-                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemApplyActionPerformed"/>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jMenuItemCopyToLibraryActionPerformed"/>
               </Events>
             </MenuItem>
           </SubComponents>
@@ -79,6 +79,7 @@
     <SyntheticProperty name="generateCenter" type="boolean" value="false"/>
   </SyntheticProperties>
   <Events>
+    <EventHandler event="windowLostFocus" listener="java.awt.event.WindowFocusListener" parameters="java.awt.event.WindowEvent" handler="formWindowLostFocus"/>
     <EventHandler event="windowClosing" listener="java.awt.event.WindowListener" parameters="java.awt.event.WindowEvent" handler="formWindowClosing"/>
   </Events>
   <AuxValues>
@@ -138,9 +139,19 @@
 
                   <Layout class="org.netbeans.modules.form.compat2.layouts.DesignGridLayout">
                     <Property name="columns" type="int" value="2"/>
-                    <Property name="rows" type="int" value="3"/>
+                    <Property name="rows" type="int" value="5"/>
                   </Layout>
                   <SubComponents>
+                    <Component class="javax.swing.JLabel" name="jLabel1">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="Library:"/>
+                      </Properties>
+                    </Component>
+                    <Component class="javax.swing.JLabel" name="jLabelLibrary">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="library"/>
+                      </Properties>
+                    </Component>
                     <Component class="javax.swing.JLabel" name="jLabel7">
                       <Properties>
                         <Property name="text" type="java.lang.String" value="Name:"/>
@@ -158,11 +169,8 @@
                     </Component>
                     <Component class="javax.swing.JTextField" name="jTextFieldAuthor">
                       <Properties>
-                        <Property name="text" type="java.lang.String" value="jTextField1"/>
+                        <Property name="text" type="java.lang.String" value="author"/>
                       </Properties>
-                      <Events>
-                        <EventHandler event="focusLost" listener="java.awt.event.FocusListener" parameters="java.awt.event.FocusEvent" handler="jTextFieldAuthorFocusLost"/>
-                      </Events>
                     </Component>
                     <Component class="javax.swing.JLabel" name="jLabel9">
                       <Properties>
@@ -171,7 +179,17 @@
                     </Component>
                     <Component class="javax.swing.JTextField" name="jTextFieldLicense">
                       <Properties>
-                        <Property name="text" type="java.lang.String" value="jTextField2"/>
+                        <Property name="text" type="java.lang.String" value="license"/>
+                      </Properties>
+                    </Component>
+                    <Component class="javax.swing.JLabel" name="jLabelHelp">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="Help patch"/>
+                      </Properties>
+                    </Component>
+                    <Component class="javax.swing.JTextField" name="jTextFieldHelp">
+                      <Properties>
+                        <Property name="text" type="java.lang.String" value="help"/>
                       </Properties>
                     </Component>
                   </SubComponents>
@@ -417,11 +435,6 @@
                 <Property name="axis" type="int" value="1"/>
               </Layout>
               <SubComponents>
-                <Component class="javax.swing.JLabel" name="jPanelKRateCode1">
-                  <Properties>
-                    <Property name="text" type="java.lang.String" value="jLabel11"/>
-                  </Properties>
-                </Component>
                 <Container class="javax.swing.JPanel" name="jPanelKRateCode2">
 
                   <Layout>
@@ -432,7 +445,7 @@
                     </DimensionLayout>
                     <DimensionLayout dim="1">
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <EmptySpace min="0" pref="288" max="32767" attributes="0"/>
+                          <EmptySpace min="0" pref="302" max="32767" attributes="0"/>
                       </Group>
                     </DimensionLayout>
                   </Layout>
@@ -519,9 +532,6 @@
               </SubComponents>
             </Container>
             <Container class="javax.swing.JPanel" name="jPanelXML">
-              <Events>
-                <EventHandler event="focusGained" listener="java.awt.event.FocusListener" parameters="java.awt.event.FocusEvent" handler="jPanelXMLFocusGained"/>
-              </Events>
               <Constraints>
                 <Constraint layoutClass="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout" value="org.netbeans.modules.form.compat2.layouts.support.JTabbedPaneSupportLayout$JTabbedPaneConstraintsDescription">
                   <JTabbedPaneConstraints tabName="XML">

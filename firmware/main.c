@@ -56,7 +56,7 @@
 /*===========================================================================*/
 
 
-#define ENABLE_SERIAL_DEBUG 1
+//#define ENABLE_SERIAL_DEBUG 1
 
 #ifdef ENABLE_USB_HOST
 #if (BOARD_AXOLOTI_V03)
@@ -145,8 +145,6 @@ int main(void) {
 
   InitPConnection();
 
-  InitPWM();
-
   // display SPI CS?
   palSetPadMode(GPIOC, 1, PAL_MODE_OUTPUT_PUSHPULL);
   palSetPad(GPIOC, 1);
@@ -156,21 +154,20 @@ int main(void) {
   palSetPadMode(SW2_PORT, SW2_PIN, PAL_MODE_INPUT_PULLDOWN);
 
   axoloti_board_init();
+  adc_init();
+  axoloti_math_init();
+  midi_init();
+  start_dsp_thread();
   codec_init();
   if (!palReadPad(SW2_PORT, SW2_PIN)) { // button S2 not pressed
 //    watchdog_init();
     chThdSleepMilliseconds(1);
   }
-  start_dsp_thread();
-  adc_init();
-  axoloti_math_init();
-  midi_init();
 
 //#if ((BOARD_AXOLOTI_V03)||(BOARD_AXOLOTI_V05))
   axoloti_control_init();
 //#endif
   ui_init();
-  StartLoadPatchTread();
 
 #if (BOARD_AXOLOTI_V05)
   configSDRAM();
@@ -178,7 +175,8 @@ int main(void) {
 #endif
 #if (BOARD_STM32F4DISCOVERY_1)
   if (!palReadPad(GPIOA, 0)) // User button not pressed
-	  sdcard_loadPatch("0:start.bin");
+	   LoadPatchStartSD();
+	   //LoadPatch("0:start.bin");
 #endif
 
 
@@ -203,21 +201,17 @@ int main(void) {
 
     // if no patch booting or running yet
     // try loading from flash
-    if (patchStatus) {
-      // patch in flash sector 11
-      memcpy((uint8_t *)PATCHMAINLOC, (uint8_t *)PATCHFLASHLOC, PATCHFLASHSIZE);
-      if ((*(uint32_t *)PATCHMAINLOC != 0xFFFFFFFF)
-          && (*(uint32_t *)PATCHMAINLOC != 0)) {
-        if (!palReadPad(SW2_PORT, SW2_PIN)) // button S2 not pressed
-          StartPatch();
-      }
+    if (patchStatus != RUNNING) {
+      if (!palReadPad(SW2_PORT, SW2_PIN)) // button S2 not pressed
+        LoadPatchStartFlash();
     }
   }
 
   while (1) {
     chThdSleepMilliseconds(1000);
 #if (BOARD_STM32F4DISCOVERY)||(BOARD_STM32F4DISCOVERY_1)
-	ToggleGreen();
+	//ToggleGreen();
+	ToggleBlue();
 	if (!patchStatus) SetOrange();
 	else ClearOrange();
 #endif

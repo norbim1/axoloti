@@ -36,8 +36,11 @@ public class AttributeInstanceSpinner extends AttributeInstanceInt<AxoAttributeS
 
     public AttributeInstanceSpinner(AxoAttributeSpinner param, AxoObjectInstance axoObj1) {
         super(param, axoObj1);
+        this.axoObj = axoObj1;
         value = attr.getDefaultValue();
     }
+
+    int valueBeforeAdjustment;
 
     @Override
     public void PostConstructor() {
@@ -49,11 +52,24 @@ public class AttributeInstanceSpinner extends AttributeInstanceInt<AxoAttributeS
             value = attr.getMaxValue();
         }
         spinner = new NumberBoxComponent(value, attr.getMinValue(), attr.getMaxValue(), 1.0);
+        spinner.setParentAxoObjectInstance(this.axoObj);
         add(spinner);
         spinner.addACtrlListener(new ACtrlListener() {
             @Override
             public void ACtrlAdjusted(ACtrlEvent e) {
                 value = (int) spinner.getValue();
+            }
+
+            @Override
+            public void ACtrlAdjustmentBegin(ACtrlEvent e) {
+                valueBeforeAdjustment = value;
+            }
+
+            @Override
+            public void ACtrlAdjustmentFinished(ACtrlEvent e) {
+                if (value != valueBeforeAdjustment) {
+                    SetDirty();
+                }
             }
         });
     }
@@ -84,5 +100,4 @@ public class AttributeInstanceSpinner extends AttributeInstanceInt<AxoAttributeS
     public void setValue(int value) {
         this.value = value;
     }
-
 }

@@ -17,10 +17,10 @@
  */
 package components;
 
+import axoloti.Theme;
 import axoloti.parameters.ParameterInstanceFrac32UMap;
 import axoloti.utils.Constants;
 import components.control.HSliderComponent;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -54,6 +54,7 @@ public class AssignPresetComponent extends JComponent {
                 JPopupMenu pm = new JPopupMenu();
                 AssignPresetMenuItems m = new AssignPresetMenuItems(AssignPresetComponent.this.param, pm);
                 pm.show(AssignPresetComponent.this, 0, getHeight());
+
                 e.consume();
             }
 
@@ -79,22 +80,23 @@ public class AssignPresetComponent extends JComponent {
 
     @Override
     public void paintComponent(Graphics g) {
+        super.paintComponent(g);
         if ((param.getPresets() != null) && (!param.getPresets().isEmpty())) {
             Graphics2D g2 = (Graphics2D) g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                     RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setFont(Constants.font);
-            g2.setColor(getBackground());
+            g2.setFont(Constants.FONT);
+            g2.setColor(Theme.getCurrentTheme().Object_Default_Background);
             g2.fillRect(1, 1, getWidth(), getHeight());
             if ((param.getPresets() != null) && (!param.getPresets().isEmpty())) {
-                g2.setColor(Color.black);
+                g2.setColor(Theme.getCurrentTheme().Component_Primary);
                 g2.fillRect(1, 1, 8, getHeight());
-                g2.setColor(Color.white);
+                g2.setColor(Theme.getCurrentTheme().Component_Secondary);
             } else {
-                g2.setColor(Color.black);
+                g2.setColor(Theme.getCurrentTheme().Component_Primary);
             }
             g2.drawString("P", 1, getHeight() - 2);
-            g2.setColor(Color.black);
+            g2.setColor(Theme.getCurrentTheme().Component_Primary);
             final int rmargin = 2;
             final int htick = 2;
             int[] xp = new int[]{getWidth() - rmargin - htick * 2, getWidth() - rmargin, getWidth() - rmargin - htick};

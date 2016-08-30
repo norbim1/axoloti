@@ -17,8 +17,9 @@
  */
 package components.control;
 
+import axoloti.Theme;
+import axoloti.utils.KeyUtils;
 import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -72,30 +73,38 @@ public class Checkbox4StatesComponent extends ACtrlComponent {
 
     @Override
     protected void mousePressed(MouseEvent e) {
-        grabFocus();
-        if (e.getButton() == 1) {
-            int i = e.getX() / bsize;
-            if ((i >= 0) && (i < n)) {
-                if (e.isShiftDown()) {
-                    dragValue = GetFieldValue(i);
-                } else {
-                    dragValue = (GetFieldValue(i) + 1) & 3;
+        if (!e.isPopupTrigger()) {
+            grabFocus();
+            if (e.getButton() == 1) {
+                int i = e.getX() / bsize;
+                if ((i >= 0) && (i < n)) {
+                    fireEventAdjustmentBegin();
+                    if (e.isShiftDown()) {
+                        dragValue = GetFieldValue(i);
+                    } else {
+                        dragValue = (GetFieldValue(i) + 1) & 3;
+                    }
+                    SetFieldValue(i, dragValue);
+                    selIndex = i;
+                    dragAction = true;
                 }
-                SetFieldValue(i, dragValue);
-                selIndex = i;
-                dragAction = true;
+                e.consume();
             }
         }
     }
 
     @Override
     protected void mouseReleased(MouseEvent e) {
+        if (!e.isPopupTrigger()) {
+            fireEventAdjustmentFinished();
+            e.consume();
+        }
         dragAction = false;
     }
 
     @Override
     public void keyPressed(KeyEvent ke) {
-        if (ke.isAltDown() || ke.isAltGraphDown() || ke.isControlDown() || ke.isMetaDown()) {
+        if (KeyUtils.isIgnoreModifierDown(ke)) {
             return;
         }
         switch (ke.getKeyCode()) {
@@ -122,7 +131,9 @@ public class Checkbox4StatesComponent extends ACtrlComponent {
                 if (v > 3) {
                     v = 3;
                 }
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, v);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 return;
             }
@@ -131,41 +142,57 @@ public class Checkbox4StatesComponent extends ACtrlComponent {
                 if (v < 0) {
                     v = 0;
                 }
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, v);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 return;
             }
             case KeyEvent.VK_PAGE_UP: {
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, 3);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 return;
             }
             case KeyEvent.VK_PAGE_DOWN: {
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, 0);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 return;
             }
         }
-        
+
         switch (ke.getKeyChar()) {
             case '0':
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, 0);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 break;
             case '1':
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, 1);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 break;
             case '2':
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, 2);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 break;
             case '3':
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, 3);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 break;
             case ' ':
+                fireEventAdjustmentBegin();
                 SetFieldValue(selIndex, (GetFieldValue(selIndex) + 1) & 3);
+                fireEventAdjustmentFinished();
                 ke.consume();
                 break;
         }
@@ -176,15 +203,16 @@ public class Checkbox4StatesComponent extends ACtrlComponent {
 
     @Override
     public void paintComponent(Graphics g) {
+        super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                 RenderingHints.VALUE_INTERPOLATION_BILINEAR);
         if (isEnabled()) {
-            g2.setColor(Color.white);
+            g2.setColor(Theme.getCurrentTheme().Component_Secondary);
         } else {
-            g2.setColor(getBackground());
+            g2.setColor(Theme.getCurrentTheme().Object_Default_Background);
         }
         g2.fillRect(0, 0, bsize * n, bsize + 1);
         g2.setPaint(getForeground());
@@ -208,16 +236,16 @@ public class Checkbox4StatesComponent extends ACtrlComponent {
             for (int i = 0; i < n; i++) {
                 switch (v & 3) {
                     case 0:
-                        g2.setColor(Color.white);
+                        g2.setColor(Theme.getCurrentTheme().Component_Secondary);
                         break;
                     case 1:
-                        g2.setColor(Color.getHSBColor(0.0f, 0.0f, 0.66f));
+                        g2.setColor(Theme.getCurrentTheme().Component_Mid_Dark);
                         break;
                     case 2:
-                        g2.setColor(Color.getHSBColor(0.0f, 0.0f, 0.33f));
+                        g2.setColor(Theme.getCurrentTheme().Component_Mid_Light);
                         break;
                     case 3:
-                        g2.setColor(Color.black);
+                        g2.setColor(Theme.getCurrentTheme().Component_Primary);
                         break;
                 }
                 g2.fillRect(i * bsize + inset, inset, bsize - inset - 1, bsize - inset);

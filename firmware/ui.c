@@ -297,10 +297,11 @@ void EnterMenuLoadFile(void) {
   char str[20] = "0:";
   strcat(str, F->keyname);
   int l = strlen(str);
-  if (str[l - 4] != '.') {
-	  strcat(str, "/patch.bin");
-  }
-  sdcard_loadPatch(str);
+  if (!((str[l - 4] == '.') && (str[l - 3] == 'b') && (str[l - 2] == 'i')
+    && (str[l - 1] == 'n'))) {
+	strcat(str, "/patch.bin");
+    }
+  LoadPatch(str);
 }
 
 char FileName[64];

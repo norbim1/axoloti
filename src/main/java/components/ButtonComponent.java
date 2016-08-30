@@ -17,9 +17,9 @@
  */
 package components;
 
+import axoloti.Theme;
 import axoloti.utils.Constants;
 import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -84,7 +84,7 @@ public class ButtonComponent extends JComponent implements MouseInputListener, K
         this.label = label;
         FontRenderContext frc = new FontRenderContext(null, true, true);
         int width = 0;
-        TextLayout tl = new TextLayout(label, Constants.font, frc);
+        TextLayout tl = new TextLayout(label, Constants.FONT, frc);
         width = (int) tl.getBounds().getWidth();
         if (width < 20) {
             width = 20;
@@ -127,9 +127,9 @@ public class ButtonComponent extends JComponent implements MouseInputListener, K
 
     @Override
     public void paintComponent(Graphics g) {
-        final int radius = 12;
-
+        super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
+        final int radius = 12;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
@@ -142,19 +142,19 @@ public class ButtonComponent extends JComponent implements MouseInputListener, K
         if (isHighlighted) {
             g2.setPaint(getForeground());
             g2.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, radius, radius);
-            g2.setPaint(Color.WHITE);
-            g2.setFont(Constants.font);
+            g2.setPaint(Theme.getCurrentTheme().Component_Secondary);
+            g2.setFont(Constants.FONT);
             g2.drawString(label, 8, getHeight() - 5);
         } else {
             if (isEnabled()) {
-                g2.setPaint(Color.WHITE);
+                g2.setPaint(Theme.getCurrentTheme().Component_Secondary);
             } else {
-                g2.setPaint(getBackground());
+                g2.setPaint(Theme.getCurrentTheme().Object_Default_Background);
             }
             g2.fillRoundRect(2, 2, getWidth() - 4, getHeight() - 4, radius, radius);
             g2.setPaint(getForeground());
             g2.drawRoundRect(2, 2, getWidth() - 4, getHeight() - 4, radius, radius);
-            g2.setFont(Constants.font);
+            g2.setFont(Constants.FONT);
             g2.drawString(label, 8, getHeight() - 5);
         }
     }

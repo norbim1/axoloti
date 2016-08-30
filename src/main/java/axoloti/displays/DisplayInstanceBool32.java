@@ -17,7 +17,6 @@
  */
 package axoloti.displays;
 
-import axoloti.object.AxoObjectInstanceAbstract;
 import components.displays.LedstripComponent;
 
 /**
@@ -40,7 +39,6 @@ public class DisplayInstanceBool32<DisplayBool32> extends DisplayInstanceInt32 {
         add(readout);
         readout.setSize(readout.getHeight(), 80);
         setSize(getPreferredSize());
-        doLayout();
     }
 
     @Override
