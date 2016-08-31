@@ -294,8 +294,10 @@ void EnterMenuLoadFile(void) {
   KeyValuePair_s *F =
       &((KeyValuePair_s *)(LoadMenu.avp.array))[LoadMenu.avp.current];
 
-  char str[20] = "0:";
+  char str[64] = "0:";
   strcat(str, F->keyname);
+  KeyValuePair_s *M = &KvpsHead;
+  M->keyname = F->keyname;
   int l = strlen(str);
   if (!((str[l - 4] == '.') && (str[l - 3] == 'b') && (str[l - 2] == 'i')
     && (str[l - 1] == 'n'))) {
